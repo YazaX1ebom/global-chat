@@ -27,7 +27,7 @@ async function startServer() {
     // Загружаем последние 100 сообщений из базы при старте сервера
     let messages = [];
     try {
-        messages = await messagesCollection.find().sort({ _id: 1 }).limit(100).toArray();
+        messages = await messagesCollection.find().sort({ _id: 1 }).limit(1000).toArray();
         // Превращаем документы из базы в простой массив строк сообщений
         messages = messages.map(doc => doc.text);
     } catch (err) {
