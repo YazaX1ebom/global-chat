@@ -1,82 +1,88 @@
 const WebSocket = require('ws');
-const fs = require('fs');
-const path = require('path');
+const { MongoClient } = require('mongodb');
 
 const PORT = process.env.PORT || 8080;
+// Берем строку подключения из переменных окружения Render (или используем локальную для теста)
+const MONGO_URI = process.env.MONGO_URI || "mongodb://localhost:27017";
+const DB_NAME = "chatApp";
+const COLLECTION_NAME = "messages";
+
 const wss = new WebSocket.Server({ port: PORT });
 
-// Путь к файлу для сохранения истории сообщений
-const HISTORY_FILE = path.join(__dirname, 'messages.json');
+async function startServer() {
+    let db, messagesCollection;
 
-// Функция для чтения истории из файла
-function loadHistory() {
     try {
-        if (fs.existsSync(HISTORY_FILE)) {
-            const data = fs.readFileSync(HISTORY_FILE, 'utf8');
-            return JSON.parse(data);
-        }
+        // Подключаемся к MongoDB Atlas
+        const client = new MongoClient(MONGO_URI);
+        await client.connect();
+        db = client.db(DB_NAME);
+        messagesCollection = db.collection(COLLECTION_NAME);
+        console.log("Успешное подключение к MongoDB Atlas!");
     } catch (err) {
-        console.error('Ошибка чтения истории:', err);
+        console.error("Ошибка подключения к MongoDB:", err);
+        process.exit(1);
     }
-    return [];
-}
 
-// Функция для сохранения истории в файл
-function saveHistory(messages) {
+    // Загружаем последние 100 сообщений из базы при старте сервера
+    let messages = [];
     try {
-        fs.writeFileSync(HISTORY_FILE, JSON.stringify(messages, null, 2));
+        messages = await messagesCollection.find().sort({ _id: 1 }).limit(100).toArray();
+        // Превращаем документы из базы в простой массив строк сообщений
+        messages = messages.map(doc => doc.text);
     } catch (err) {
-        console.error('Ошибка сохранения истории:', err);
+        console.error("Ошибка загрузки истории из базы:", err);
     }
-}
 
-// Загружаем существующую историю при старте сервера
-let messages = loadHistory();
+    console.log(`Сервер чата запущен на порту ${PORT}. Загружено сообщений из БД: ${messages.length}`);
 
-console.log(`Сервер чата запущен на порту ${PORT}. Загружено сообщений: ${messages.length}`);
+    wss.on('connection', (ws) => {
+        console.log('Новый пользователь подключился!');
 
-wss.on('connection', (ws) => {
-    console.log('Новый пользователь подключился!');
+        // 1. Отправляем всю историю новому пользователю
+        ws.send(JSON.stringify({
+            type: 'history',
+            data: messages
+        }));
 
-    // 1. При подключении сразу отправляем новому пользователю всю историю сообщений
-    ws.send(JSON.stringify({
-        type: 'history',
-        data: messages
-    }));
-
-    ws.on('message', (message) => {
-        let messageText;
-        try {
-            messageText = message.toString();
-        } catch (e) {
-            messageText = message;
-        }
-
-        console.log(`Получено сообщение: ${messageText}`);
-
-        // Добавляем новое сообщение в массив истории
-        messages.push(messageText);
-
-        // Ограничим историю последними 100 сообщениями, чтобы файл не раздувался
-        if (messages.length > 100) {
-            messages.shift();
-        }
-
-        // Сохраняем обновленную историю на диск
-        saveHistory(messages);
-
-        // Рассылаем сообщение всем подключенным клиентам в реальном времени
-        wss.clients.forEach((client) => {
-            if (client.readyState === WebSocket.OPEN) {
-                client.send(JSON.stringify({
-                    type: 'message',
-                    data: messageText
-                }));
+        ws.on('message', async (message) => {
+            let messageText;
+            try {
+                messageText = message.toString();
+            } catch (e) {
+                messageText = message;
             }
+
+            console.log(`Получено сообщение: ${messageText}`);
+
+            // Добавляем в локальный массив
+            messages.push(messageText);
+            if (messages.length > 100) {
+                messages.shift();
+            }
+
+            // Сохраняем сообщение в MongoDB Atlas навсегда
+            try {
+                await messagesCollection.insertOne({ text: messageText, createdAt: new Date() });
+            } catch (err) {
+                console.error("Ошибка сохранения сообщения в базу:", err);
+            }
+
+            // Рассылаем всем онлайн-пользователям
+            wss.clients.forEach((client) => {
+                if (client.readyState === WebSocket.OPEN) {
+                    client.send(JSON.stringify({
+                        type: 'message',
+                        data: messageText
+                    }));
+                }
+            });
+        });
+
+        ws.on('close', () => {
+            console.log('Пользователь отключился');
         });
     });
+}
 
-    ws.on('close', () => {
-        console.log('Пользователь отключился');
-    });
-});
+startServer();
