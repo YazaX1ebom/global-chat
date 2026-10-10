@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Глобальный веб-чат</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 600px; margin: 50px auto; padding: 20px; }
+        #chat { border: 1px solid #ccc; height: 300px; overflow-y: scroll; padding: 10px; margin-bottom: 10px; background: #f9f9f9; }
+        .message { margin-bottom: 8px; }
+        .input-group { display: flex; gap: 10px; }
+        input, button { padding: 10px; font-size: 16px; }
+        #messageInput { flex-grow: 1; }
+    </style>
+</head>
+<body>
+
+    <h2>Глобальный чат</h2>
+    <div id="chat"></div>
+
+    <div class="input-group">
+        <input type="text" id="usernameInput" placeholder="Твое имя" style="width: 120px;" />
+        <input type="text" id="messageInput" placeholder="Введите сообщение..." />
+        <button onclick="sendMessage()">Отправить</button>
+    </div>
+
+    <script>
+        const ws = new WebSocket('ws://localhost:8080');
+        const chatDiv = document.getElementById('chat');
+
+        ws.onmessage = function(event) {
+            const data = JSON.parse(event.data);
+            const messageElement = document.createElement('div');
+            messageElement.classList.add('message');
+            messageElement.innerHTML = `<strong>${data.name}:</strong> ${data.text}`;
+            chatDiv.appendChild(messageElement);
+            chatDiv.scrollTop = chatDiv.scrollHeight;
+        };
+
+        function sendMessage() {
+            const nameInput = document.getElementById('usernameInput');
+            const messageInput = document.getElementById('messageInput');
+
+            const name = nameInput.value.trim() || 'Аноним';
+            const text = messageInput.value.trim();
+
+            if (!text) return;
+
+            const messageData = { name: name, text: text };
+            ws.send(JSON.stringify(messageData));
+            messageInput.value = '';
+        }
+
+        document.getElementById('messageInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') sendMessage();
+        });
+    </script>
+
+</body>
+</html>
