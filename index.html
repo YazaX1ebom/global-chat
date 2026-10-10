@@ -24,23 +24,32 @@
     </div>
 
     <script>
-        const ws = new WebSocket('ws://localhost:8080');
+            // Подключаемся к вашему реальному серверу на Render
+        const ws = new WebSocket('wss://global-chat-utz6.onrender.com');
         const chatDiv = document.getElementById('chat');
 
-ws.onmessage = (event) => {
-    // Распаковываем JSON-пакет, который прислал сервер
-    const packet = JSON.parse(event.data);
+        // Функция для вывода сообщения на экран
+        function displayMessage(text) {
+            const messageElement = document.createElement('div');
+            messageElement.classList.add('message');
+            messageElement.textContent = text;
+            chatDiv.appendChild(messageElement);
+            chatDiv.scrollTop = chatDiv.scrollHeight; // Автопрокрутка вниз
+        }
 
-    if (packet.type === 'history') {
-        // Если это история — проходим по всем старым сообщениям и выводим их на экран
-        packet.data.forEach(msg => {
-            displayMessage(msg);
-        });
-    } else if (packet.type === 'message') {
-        // Если это новое сообщение в реальном времени — выводим его
-        displayMessage(packet.data);
-    }
-};
+        ws.onmessage = (event) => {
+            const packet = JSON.parse(event.data);
+
+            if (packet.type === 'history') {
+                // При входе выводим всю прошлую историю
+                packet.data.forEach(msg => {
+                    displayMessage(msg);
+                });
+            } else if (packet.type === 'message') {
+                // Новое сообщение в реальном времени
+                displayMessage(packet.data);
+            }
+        };
 
         function sendMessage() {
             const nameInput = document.getElementById('usernameInput');
@@ -51,8 +60,9 @@ ws.onmessage = (event) => {
 
             if (!text) return;
 
-            const messageData = { name: name, text: text };
-            ws.send(JSON.stringify(messageData));
+            // Отправляем имя и текст на сервер
+            const fullMessage = `${name}: ${text}`;
+            ws.send(fullMessage);
             messageInput.value = '';
         }
 
