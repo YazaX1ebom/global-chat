@@ -24,7 +24,7 @@
     </div>
 
     <script>
-            // Подключаемся к вашему реальному серверу на Render
+        // Подключаемся к вашему реальному серверу на Render
         const ws = new WebSocket('wss://global-chat-utz6.onrender.com');
         const chatDiv = document.getElementById('chat');
 
@@ -60,10 +60,16 @@
 
             if (!text) return;
 
-            // Отправляем имя и текст на сервер
+            // Отправляем имя и текст на сервер с проверкой состояния WebSocket
             const fullMessage = `${name}: ${text}`;
-            ws.send(fullMessage);
-            messageInput.value = '';
+            
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(fullMessage);
+                messageInput.value = '';
+            } else {
+                console.error('Соединение с сервером потеряно. Переподключитесь.');
+                alert('Соединение с сервером не установлено или потеряно. Подождите пару секунд (сервер может просыпаться) или перезагрузите страницу.');
+            }
         }
 
         document.getElementById('messageInput').addEventListener('keypress', function(e) {
