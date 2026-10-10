@@ -27,14 +27,20 @@
         const ws = new WebSocket('ws://localhost:8080');
         const chatDiv = document.getElementById('chat');
 
-        ws.onmessage = function(event) {
-            const data = JSON.parse(event.data);
-            const messageElement = document.createElement('div');
-            messageElement.classList.add('message');
-            messageElement.innerHTML = `<strong>${data.name}:</strong> ${data.text}`;
-            chatDiv.appendChild(messageElement);
-            chatDiv.scrollTop = chatDiv.scrollHeight;
-        };
+ws.onmessage = (event) => {
+    // Распаковываем JSON-пакет, который прислал сервер
+    const packet = JSON.parse(event.data);
+
+    if (packet.type === 'history') {
+        // Если это история — проходим по всем старым сообщениям и выводим их на экран
+        packet.data.forEach(msg => {
+            displayMessage(msg);
+        });
+    } else if (packet.type === 'message') {
+        // Если это новое сообщение в реальном времени — выводим его
+        displayMessage(packet.data);
+    }
+};
 
         function sendMessage() {
             const nameInput = document.getElementById('usernameInput');
