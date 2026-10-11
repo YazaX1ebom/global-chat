@@ -98,114 +98,109 @@
         }
     </style>
 
-<script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-    import { getAuth, GoogleAuthProvider, signInWithRedirect, getRedirectResult, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+    <!-- Подключаем Firebase SDK -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
-    const firebaseConfig = {
-        apiKey: "AIzaSyAtjgLbbXe-1fmL5hu409vNgBampz97ndo",
-        authDomain: "globalchat-0502.firebaseapp.com",
-        projectId: "globalchat-0502",
-        storageBucket: "globalchat-0502.firebasestorage.app",
-        messagingSenderId: "726374747402",
-        appId: "1:726374747402:web:858f55fc74c4f68f133ef3"
-    };
+        const firebaseConfig = {
+            apiKey: "AIzaSyAtjgLbbXe-1fmL5hu409vNgBampz97ndo",
+            authDomain: "globalchat-0502.firebaseapp.com",
+            projectId: "globalchat-0502",
+            storageBucket: "globalchat-0502.firebasestorage.app",
+            messagingSenderId: "726374747402",
+            appId: "1:726374747402:web:858f55fc74c4f68f133ef3"
+        };
 
-    const app = initializeApp(firebaseConfig);
-    const auth = getAuth(app);
-    const provider = new GoogleAuthProvider();
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const provider = new GoogleAuthProvider();
 
-    let currentUser = null;
+        let currentUser = null;
 
-    const loginBtn = document.getElementById('loginBtn');
-    const logoutBtn = document.getElementById('logoutBtn');
-    const userInfo = document.getElementById('userInfo');
-    const messageInput = document.getElementById('messageInput');
-    const sendBtn = document.getElementById('sendBtn');
+        const loginBtn = document.getElementById('loginBtn');
+        const logoutBtn = document.getElementById('logoutBtn');
+        const userInfo = document.getElementById('userInfo');
+        const messageInput = document.getElementById('messageInput');
+        const sendBtn = document.getElementById('sendBtn');
 
-    loginBtn.onclick = () => {
-        signInWithRedirect(auth, provider);
-    };
+        // Используем popup-окно для входа
+        loginBtn.onclick = () => {
+            signInWithPopup(auth, provider)
+                .catch((error) => {
+                    console.error("Ошибка входа через popup:", error);
+                    alert("Не удалось войти: " + error.message);
+                });
+        };
 
-    logoutBtn.onclick = () => {
-        signOut(auth);
-    };
+        logoutBtn.onclick = () => {
+            signOut(auth);
+        };
 
-    getRedirectResult(auth)
-    .then((result) => {
-        if (result && result.user) {
-            console.log("Успешный вход:", result.user.displayName);
+        onAuthStateChanged(auth, (user) => {
+            currentUser = user;
+            if (user) {
+                userInfo.textContent = `Привет, ${user.displayName}`;
+                loginBtn.style.display = 'none';
+                logoutBtn.style.display = 'inline-block';
+                
+                messageInput.disabled = false;
+                sendBtn.disabled = false;
+                messageInput.placeholder = "Введите сообщение...";
+            } else {
+                userInfo.textContent = "Вы не вошли в систему";
+                loginBtn.style.display = 'inline-block';
+                logoutBtn.style.display = 'none';
+                
+                messageInput.disabled = true;
+                sendBtn.disabled = true;
+                messageInput.placeholder = "Войдите через Google, чтобы писать сообщения...";
+            }
+        });
+
+        const ws = new WebSocket('wss://global-chat-utz6.onrender.com');
+        const chatDiv = document.getElementById('chat');
+
+        function displayMessage(text) {
+            const messageElement = document.createElement('div');
+            messageElement.classList.add('message');
+            messageElement.textContent = text;
+            chatDiv.appendChild(messageElement);
+            chatDiv.scrollTop = chatDiv.scrollHeight;
         }
-    })
-    .catch((error) => {
-        console.error("Ошибка входа:", error);
-    });
 
-    onAuthStateChanged(auth, (user) => {
-        currentUser = user;
-        if (user) {
-            userInfo.textContent = `Привет, ${user.displayName}`;
-            loginBtn.style.display = 'none';
-            logoutBtn.style.display = 'inline-block';
+        ws.onmessage = (event) => {
+            const packet = JSON.parse(event.data);
+            if (packet.type === 'history') {
+                packet.data.forEach(msg => displayMessage(msg));
+            } else if (packet.type === 'message') {
+                displayMessage(packet.data);
+            }
+        };
+
+        window.sendMessage = function() {
+            if (!currentUser) {
+                alert('Необходимо войти через Google!');
+                return;
+            }
+
+            const text = messageInput.value.trim();
+            if (!text) return;
+
+            const fullMessage = `${currentUser.displayName}: ${text}`;
             
-            messageInput.disabled = false;
-            sendBtn.disabled = false;
-            messageInput.placeholder = "Введите сообщение...";
-        } else {
-            userInfo.textContent = "Вы не вошли в систему";
-            loginBtn.style.display = 'inline-block';
-            logoutBtn.style.display = 'none';
-            
-            messageInput.disabled = true;
-            sendBtn.disabled = true;
-            messageInput.placeholder = "Войдите через Google, чтобы писать сообщения...";
-        }
-    });
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(fullMessage);
+                messageInput.value = '';
+            } else {
+                alert('Нет соединения с сервером.');
+            }
+        };
 
-    const ws = new WebSocket('wss://global-chat-utz6.onrender.com');
-    const chatDiv = document.getElementById('chat');
-
-    function displayMessage(text) {
-        const messageElement = document.createElement('div');
-        messageElement.classList.add('message');
-        messageElement.textContent = text;
-        chatDiv.appendChild(messageElement);
-        chatDiv.scrollTop = chatDiv.scrollHeight;
-    }
-
-    ws.onmessage = (event) => {
-        const packet = JSON.parse(event.data);
-        if (packet.type === 'history') {
-            packet.data.forEach(msg => displayMessage(msg));
-        } else if (packet.type === 'message') {
-            displayMessage(packet.data);
-        }
-    };
-
-    window.sendMessage = function() {
-        if (!currentUser) {
-            alert('Необходимо войти через Google!');
-            return;
-        }
-
-        const text = messageInput.value.trim();
-        if (!text) return;
-
-        const fullMessage = `${currentUser.displayName}: ${text}`;
-        
-        if (ws && ws.readyState === WebSocket.OPEN) {
-            ws.send(fullMessage);
-            messageInput.value = '';
-        } else {
-            alert('Нет соединения с сервером.');
-        }
-    };
-
-    document.getElementById('messageInput').addEventListener('keypress', function(e) {
-        if (e.key === 'Enter') window.sendMessage();
-    });
-</script>
-
+        document.getElementById('messageInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') window.sendMessage();
+        });
+    </script>
 </head>
 <body>
 
