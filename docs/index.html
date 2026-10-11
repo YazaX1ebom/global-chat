@@ -9,14 +9,25 @@
             max-width: 650px; 
             margin: 30px auto; 
             padding: 10px; 
-            background: #edeef0; /* Классический фон соцсетей 2015 года */
+            background: #edeef0; 
         }
         
+        .header-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
         h2 {
             color: #2b587a;
             font-size: 20px;
-            margin-bottom: 15px;
+            margin: 0;
             text-shadow: 0 1px 0 #fff;
+        }
+
+        .auth-box {
+            font-size: 13px;
         }
 
         #chat { 
@@ -51,7 +62,7 @@
             border-radius: 3px;
         }
 
-        input { 
+        input, button { 
             padding: 8px 10px; 
             font-size: 13px; 
             border: 1px solid #b9c2c8;
@@ -63,22 +74,15 @@
             border-color: #5181b8;
         }
 
-        #usernameInput {
-            width: 130px;
-        }
-
         #messageInput { 
             flex-grow: 1; 
         }
 
         button { 
-            padding: 8px 16px; 
-            font-size: 13px; 
             font-weight: bold;
             color: #fff;
             background: linear-gradient(to bottom, #5281b8 0%, #436e9e 100%);
             border: 1px solid #3b608a;
-            border-radius: 3px;
             cursor: pointer;
             box-shadow: 0 1px 0 rgba(255,255,255,0.2) inset;
         }
@@ -87,75 +91,131 @@
             background: linear-gradient(to bottom, #5d8ec6 0%, #4c7aa9 100%);
         }
 
-        button:active {
-            background: #3b608a;
+        button:disabled {
+            background: #ccc;
+            border-color: #b1b1b1;
+            cursor: not-allowed;
         }
     </style>
-</head>
-<body>
 
-    <h2>💬 Глобальный веб-чат (Classic 2015 Style)</h2>
-    <div id="chat"></div>
+    <!-- Подключаем Firebase SDK -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
-    <div class="input-group">
-        <input type="text" id="usernameInput" placeholder="Ваше имя" />
-        <input type="text" id="messageInput" placeholder="Введите сообщение..." />
-        <button onclick="sendMessage()">Отправить</button>
-    </div>
+        const firebaseConfig = {
+            apiKey: "AIzaSyAtjgLbbXe-1fmL5hu409VnGBampz9ndo",
+            authDomain: "globalchat-0502.firebaseapp.com",
+            projectId: "globalchat-0502",
+            storageBucket: "globalchat-0502.firebasestorage.app",
+            messagingSenderId: "726374747402",
+            appId: "1:726374747402:web:10b1b05417151620133ef3"
+        };
 
-    <script>
-        // Подключаемся к вашему реальному серверу на Render
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const provider = new GoogleAuthProvider();
+
+        let currentUser = null;
+
+        const loginBtn = document.getElementById('loginBtn');
+        const logoutBtn = document.getElementById('logoutBtn');
+        const userInfo = document.getElementById('userInfo');
+        const messageInput = document.getElementById('messageInput');
+        const sendBtn = document.getElementById('sendBtn');
+
+        loginBtn.onclick = () => {
+            signInWithPopup(auth, provider).catch((error) => {
+                console.error("Ошибка входа:", error);
+            });
+        };
+
+        logoutBtn.onclick = () => {
+            signOut(auth);
+        };
+
+        onAuthStateChanged(auth, (user) => {
+            currentUser = user;
+            if (user) {
+                userInfo.textContent = `Привет, ${user.displayName}`;
+                loginBtn.style.display = 'none';
+                logoutBtn.style.display = 'inline-block';
+                
+                messageInput.disabled = false;
+                sendBtn.disabled = false;
+                messageInput.placeholder = "Введите сообщение...";
+            } else {
+                userInfo.textContent = "Вы не вошли в систему";
+                loginBtn.style.display = 'inline-block';
+                logoutBtn.style.display = 'none';
+                
+                messageInput.disabled = true;
+                sendBtn.disabled = true;
+                messageInput.placeholder = "Войдите через Google, чтобы писать сообщения...";
+            }
+        });
+
         const ws = new WebSocket('wss://global-chat-utz6.onrender.com');
         const chatDiv = document.getElementById('chat');
 
-        // Функция для вывода сообщения на экран
         function displayMessage(text) {
             const messageElement = document.createElement('div');
             messageElement.classList.add('message');
             messageElement.textContent = text;
             chatDiv.appendChild(messageElement);
-            chatDiv.scrollTop = chatDiv.scrollHeight; // Автопрокрутка вниз
+            chatDiv.scrollTop = chatDiv.scrollHeight;
         }
 
         ws.onmessage = (event) => {
             const packet = JSON.parse(event.data);
-
             if (packet.type === 'history') {
-                // При входе выводим всю прошлую историю
-                packet.data.forEach(msg => {
-                    displayMessage(msg);
-                });
+                packet.data.forEach(msg => displayMessage(msg));
             } else if (packet.type === 'message') {
-                // Новое сообщение в реальном времени
                 displayMessage(packet.data);
             }
         };
 
-        function sendMessage() {
-            const nameInput = document.getElementById('usernameInput');
-            const messageInput = document.getElementById('messageInput');
+        window.sendMessage = function() {
+            if (!currentUser) {
+                alert('Необходимо войти через Google!');
+                return;
+            }
 
-            const name = nameInput.value.trim() || 'Аноним';
             const text = messageInput.value.trim();
-
             if (!text) return;
 
-            // Отправляем имя и текст на сервер с проверкой состояния WebSocket
-            const fullMessage = `${name}: ${text}`;
+            const fullMessage = `${currentUser.displayName}: ${text}`;
             
             if (ws && ws.readyState === WebSocket.OPEN) {
                 ws.send(fullMessage);
                 messageInput.value = '';
             } else {
-                console.error('Соединение с сервером потеряно. Переподключитесь.');
-                alert('Соединение с сервером не установлено или потеряно. Подождите пару секунд (сервер может просыпаться) или перезагрузите страницу.');
+                alert('Нет соединения с сервером.');
             }
-        }
+        };
 
         document.getElementById('messageInput').addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') sendMessage();
+            if (e.key === 'Enter') window.sendMessage();
         });
     </script>
+</head>
+<body>
+
+    <div class="header-bar">
+        <h2>💬 Глобальный веб-чат</h2>
+        <div class="auth-box">
+            <span id="userInfo" style="margin-right: 10px;">Проверка авторизации...</span>
+            <button id="loginBtn">Войти через Google</button>
+            <button id="logoutBtn" style="display: none;">Выйти</button>
+        </div>
+    </div>
+
+    <div id="chat"></div>
+
+    <div class="input-group">
+        <input type="text" id="messageInput" placeholder="Загрузка..." disabled />
+        <button id="sendBtn" onclick="sendMessage()" disabled>Отправить</button>
+    </div>
 
 </body>
 </html>
