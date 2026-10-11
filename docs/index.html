@@ -103,14 +103,14 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
         import { getAuth, GoogleAuthProvider, signInWithRedirect, getRedirectResult, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
-        const firebaseConfig = {
-            apiKey: "AIzaSyAtjgLbbXe-1fmL5hu409VnGBampz9ndo",
-            authDomain: "globalchat-0502.firebaseapp.com",
-            projectId: "globalchat-0502",
-            storageBucket: "globalchat-0502.firebasestorage.app",
-            messagingSenderId: "726374747402",
-            appId: "1:726374747402:web:10b1b05417151620133ef3"
-        };
+    const firebaseConfig = {
+        apiKey: "AIzaSyAtjgLbbXe-1fmL5hu409VnGBampz9ndo",
+        authDomain: "globalchat-0502.firebaseapp.com",
+        projectId: "globalchat-0502",
+        storageBucket: "globalchat-0502.firebasestorage.app",
+        messagingSenderId: "726374747402",
+        appId: "1:726374747402:web:10b1b05417151620133ef3"
+    };
 
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
