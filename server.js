@@ -24,7 +24,7 @@ async function startServer() {
         process.exit(1);
     }
 
-    // Загружаем последние 100 сообщений из базы при старте сервера
+    // Загружаем последние 1000 сообщений из базы при старте сервера
     let messages = [];
     try {
         messages = await messagesCollection.find().sort({ _id: 1 }).limit(1000).toArray();
@@ -53,17 +53,22 @@ async function startServer() {
                 messageText = message;
             }
 
-            console.log(`Получено сообщение: ${messageText}`);
+            // Добавляем текущее время с секундами (например, [14:25:09])
+            const now = new Date();
+            const timeString = now.toTimeString().split(' ')[0];
+            const fullMessageWithTime = `[${timeString}] ${messageText}`;
+
+            console.log(`Получено сообщение: ${fullMessageWithTime}`);
 
             // Добавляем в локальный массив
-            messages.push(messageText);
-            if (messages.length > 100) {
+            messages.push(fullMessageWithTime);
+            if (messages.length > 1000) {
                 messages.shift();
             }
 
             // Сохраняем сообщение в MongoDB Atlas навсегда
             try {
-                await messagesCollection.insertOne({ text: messageText, createdAt: new Date() });
+                await messagesCollection.insertOne({ text: fullMessageWithTime, createdAt: new Date() });
             } catch (err) {
                 console.error("Ошибка сохранения сообщения в базу:", err);
             }
@@ -73,7 +78,7 @@ async function startServer() {
                 if (client.readyState === WebSocket.OPEN) {
                     client.send(JSON.stringify({
                         type: 'message',
-                        data: messageText
+                        data: fullMessageWithTime
                     }));
                 }
             });
