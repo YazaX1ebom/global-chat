@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>Глобальный веб-чат — 2015 Edition</title>
+    <title>Global_Chat-Edition</title>
     <style>
         body { 
             font-family: Tahoma, Arial, sans-serif; 
@@ -101,7 +101,7 @@
     <!-- Подключаем Firebase SDK -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+        import { getAuth, GoogleAuthProvider, signInWithRedirect, getRedirectResult, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyAtjgLbbXe-1fmL5hu409VnGBampz9ndo",
@@ -124,15 +124,19 @@
         const messageInput = document.getElementById('messageInput');
         const sendBtn = document.getElementById('sendBtn');
 
+        // При клике перенаправляем на страницу входа Google
         loginBtn.onclick = () => {
-            signInWithPopup(auth, provider).catch((error) => {
-                console.error("Ошибка входа:", error);
-            });
+            signInWithRedirect(auth, provider);
         };
 
         logoutBtn.onclick = () => {
             signOut(auth);
         };
+
+        // Проверяем результат возврата после редиректа
+        getRedirectResult(auth).catch((error) => {
+            console.error("Ошибка входа:", error);
+        });
 
         onAuthStateChanged(auth, (user) => {
             currentUser = user;
