@@ -131,7 +131,13 @@
         signOut(auth);
     };
 
-    getRedirectResult(auth).catch((error) => {
+    getRedirectResult(auth)
+    .then((result) => {
+        if (result && result.user) {
+            console.log("Успешный вход:", result.user.displayName);
+        }
+    })
+    .catch((error) => {
         console.error("Ошибка входа:", error);
     });
 
