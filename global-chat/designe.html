@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Global Chat - Design Layout</title>
+    <style>
+        body { 
+            font-family: Tahoma, Arial, sans-serif; 
+            margin: 0; 
+            padding: 20px; 
+            background: #edeef0; 
+            display: flex;
+            justify-content: center;
+        }
+
+        /* Главный контейнер-сетка на 3 колонки */
+        .app-container {
+            display: flex;
+            width: 100%;
+            max-width: 1100px;
+            gap: 15px;
+        }
+
+        /* Левая и правая панели (боковые меню) */
+        .sidebar-left, .sidebar-right {
+            width: 200px;
+            background: #ffffff;
+            border: 1px solid #c5cdd7;
+            border-radius: 4px;
+            padding: 15px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+            height: fit-content;
+        }
+
+        .sidebar-left h3, .sidebar-right h3 {
+            font-size: 14px;
+            color: #2b587a;
+            margin-top: 0;
+            border-bottom: 1px solid #e1e3e6;
+            padding-bottom: 8px;
+        }
+
+        /* Стили для кнопок меню с картинками */
+        .menu-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 10px;
+            margin-bottom: 6px;
+            border-radius: 4px;
+            text-decoration: none;
+            color: #333;
+            font-size: 13px;
+            background: #f7f8fa;
+            border: 1px solid #e1e3e6;
+            transition: background 0.2s;
+        }
+
+        .menu-item:hover {
+            background: #ebf0f5;
+            border-color: #b9c2c8;
+        }
+
+        /* Иконки-картинки (можно заменить на любые URL или локальные пути) */
+        .menu-icon {
+            width: 18px;
+            height: 18px;
+            object-fit: contain;
+        }
+
+        /* Центральная колонка с чатом */
+        .chat-main {
+            flex-grow: 1;
+            background: #ffffff;
+            border: 1px solid #c5cdd7;
+            border-radius: 4px;
+            padding: 15px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        }
+
+        .header-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        h2 {
+            color: #2b587a;
+            font-size: 18px;
+            margin: 0;
+        }
+
+        #chat { 
+            border: 1px solid #c5cdd7; 
+            height: 380px; 
+            overflow-y: scroll; 
+            padding: 15px; 
+            margin-bottom: 12px; 
+            background: #ffffff; 
+            box-shadow: inset 0 1px 3px rgba(0,0,0,0.08);
+            border-radius: 3px;
+        }
+
+        .message { 
+            margin-bottom: 12px; 
+            padding: 8px 12px;
+            background: #f7f8fa;
+            border: 1px solid #e1e3e6;
+            border-radius: 6px;
+            font-size: 13px;
+            line-height: 1.4;
+            color: #000;
+        }
+
+        .input-group { 
+            display: flex; 
+            gap: 8px; 
+            background: #f5f6f8;
+            padding: 10px;
+            border: 1px solid #c5cdd7;
+            border-radius: 3px;
+        }
+
+        input, button { 
+            padding: 8px 10px; 
+            font-size: 13px; 
+            border: 1px solid #b9c2c8;
+            border-radius: 3px;
+            outline: none;
+        }
+
+        #messageInput { 
+            flex-grow: 1; 
+        }
+
+        button { 
+            font-weight: bold;
+            color: #fff;
+            background: linear-gradient(to bottom, #5281b8 0%, #436e9e 100%);
+            border: 1px solid #3b608a;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background: linear-gradient(to bottom, #5d8ec6 0%, #4c7aa9 100%);
+        }
+    </style>
+</head>
+<body>
+
+    <div class="app-container">
+        
+        <!-- ЛЕВАЯ ПАНЕЛЬ (Меню: Настройки, Профиль) -->
+        <div class="sidebar-left">
+            <h3>Меню</h3>
+            <a href="#" class="menu-item">
+                <!-- Разноцветная иконка (можно использовать вашу картинку) -->
+                <img src="https://img.icons8.com/color/48/settings.png" class="menu-icon" alt="settings">
+                Settings
+            </a>
+            <a href="#" class="menu-item">
+                <img src="https://img.icons8.com/color/48/user-male-circle.png" class="menu-icon" alt="profile">
+                Profile
+            </a>
+        </div>
+
+        <!-- ЦЕНТРАЛЬНАЯ ПАНЕЛЬ (Чат) -->
+        <div class="chat-main">
+            <div class="header-bar">
+                <h2>💬 Global_Chat-Edition</h2>
+                <div class="auth-box">
+                    <span id="userInfo" style="font-size: 12px; margin-right: 8px;">online</span>
+                    <button id="loginBtn">Войти</button>
+                </div>
+            </div>
+
+            <div id="chat">
+                <div class="message"><b>Markus:</b> Привет всем! Тестируем новый дизайн.</div>
+            </div>
+
+            <div class="input-group">
+                <input type="text" id="messageInput" placeholder="Введите сообщение..." />
+                <button id="sendBtn">Отправить</button>
+            </div>
+        </div>
+
+        <!-- ПРАВАЯ ПАНЕЛЬ (Темы оформления) -->
+        <div class="sidebar-right">
+            <h3>Themes</h3>
+            <a href="#" class="menu-item" style="border-left: 4px solid #5281b8;">Тема 1 (Классика)</a>
+            <a href="#" class="menu-item" style="border-left: 4px solid #2ecc71;">Тема 2 (Зеленая)</a>
+            <a href="#" class="menu-item" style="border-left: 4px solid #e74c3c;">Тема 3 (Темная)</a>
+        </div>
+
+    </div>
+
+</body>
+</html>
