@@ -6,10 +6,75 @@
     <style>
         body { 
             font-family: Tahoma, Arial, sans-serif; 
-            max-width: 650px; 
-            margin: 30px auto; 
-            padding: 10px; 
+            margin: 0; 
+            padding: 20px; 
             background: #edeef0; 
+            display: flex;
+            justify-content: center;
+        }
+
+        /* Главный контейнер на 3 колонки */
+        .app-container {
+            display: flex;
+            width: 100%;
+            max-width: 1100px;
+            gap: 15px;
+        }
+
+        /* Левая и правая боковые панели */
+        .sidebar-left, .sidebar-right {
+            width: 200px;
+            background: #ffffff;
+            border: 1px solid #c5cdd7;
+            border-radius: 4px;
+            padding: 15px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+            height: fit-content;
+        }
+
+        .sidebar-left h3, .sidebar-right h3 {
+            font-size: 14px;
+            color: #2b587a;
+            margin-top: 0;
+            border-bottom: 1px solid #e1e3e6;
+            padding-bottom: 8px;
+        }
+
+        /* Стили элементов меню с картинками */
+        .menu-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 10px;
+            margin-bottom: 6px;
+            border-radius: 4px;
+            text-decoration: none;
+            color: #333;
+            font-size: 13px;
+            background: #f7f8fa;
+            border: 1px solid #e1e3e6;
+            transition: background 0.2s;
+        }
+
+        .menu-item:hover {
+            background: #ebf0f5;
+            border-color: #b9c2c8;
+        }
+
+        .menu-icon {
+            width: 18px;
+            height: 18px;
+            object-fit: contain;
+        }
+
+        /* Центральная колонка с чатом */
+        .chat-main {
+            flex-grow: 1;
+            background: #ffffff;
+            border: 1px solid #c5cdd7;
+            border-radius: 4px;
+            padding: 15px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
         }
         
         .header-bar {
@@ -21,7 +86,7 @@
 
         h2 {
             color: #2b587a;
-            font-size: 20px;
+            font-size: 18px;
             margin: 0;
             text-shadow: 0 1px 0 #fff;
         }
@@ -197,27 +262,58 @@
             }
         };
 
-        document.getElementById('messageInput').addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') window.sendMessage();
+        document.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('messageInput').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') window.sendMessage();
+            });
         });
     </script>
 </head>
 <body>
 
-    <div class="header-bar">
-        <h2>💭 Global_Chat-Edition</h2>
-        <div class="auth-box">
-            <span id="userInfo" style="margin-right: 10px;">Проверка авторизации...</span>
-            <button id="loginBtn">Войти через Google</button>
-            <button id="logoutBtn" style="display: none;">Выйти</button>
+    <!-- Главный контейнер на 3 колонки -->
+    <div class="app-container">
+        
+        <!-- ЛЕВАЯ ПАНЕЛЬ (Меню) -->
+        <div class="sidebar-left">
+            <h3>Меню</h3>
+            <a href="#" class="menu-item">
+                <img src="https://img.icons8.com/color/48/settings.png" class="menu-icon" alt="settings">
+                Settings
+            </a>
+            <a href="#" class="menu-item">
+                <img src="https://img.icons8.com/color/48/user-male-circle.png" class="menu-icon" alt="profile">
+                Profile
+            </a>
         </div>
-    </div>
 
-    <div id="chat"></div>
+        <!-- ЦЕНТРАЛЬНАЯ ПАНЕЛЬ (Твой чат) -->
+        <div class="chat-main">
+            <div class="header-bar">
+                <h2>💬 Global_Chat-Edition</h2>
+                <div class="auth-box">
+                    <span id="userInfo" style="margin-right: 10px;">Проверка авторизации...</span>
+                    <button id="loginBtn">Войти через Google</button>
+                    <button id="logoutBtn" style="display: none;">Выйти</button>
+                </div>
+            </div>
 
-    <div class="input-group">
-        <input type="text" id="messageInput" placeholder="Загрузка..." disabled />
-        <button id="sendBtn" onclick="sendMessage()" disabled>Отправить</button>
+            <div id="chat"></div>
+
+            <div class="input-group">
+                <input type="text" id="messageInput" placeholder="Загрузка..." disabled />
+                <button id="sendBtn" onclick="sendMessage()" disabled>Отправить</button>
+            </div>
+        </div>
+
+        <!-- ПРАВАЯ ПАНЕЛЬ (Темы оформления) -->
+        <div class="sidebar-right">
+            <h3>Themes</h3>
+            <a href="#" class="menu-item" style="border-left: 4px solid #5281b8;">Тема 1</a>
+            <a href="#" class="menu-item" style="border-left: 4px solid #2ecc71;">Тема 2</a>
+            <a href="#" class="menu-item" style="border-left: 4px solid #e74c3c;">Тема 3</a>
+        </div>
+
     </div>
 
 </body>
