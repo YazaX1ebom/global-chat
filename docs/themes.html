@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Global Chat - Themes</title>
+    <style>
+        body { 
+            font-family: Tahoma, Arial, sans-serif; 
+            margin: 0; 
+            padding: 20px; 
+            background: #edeef0; 
+            display: flex;
+            justify-content: center;
+        }
+
+        .app-container {
+            display: flex;
+            width: 100%;
+            max-width: 1100px;
+            gap: 15px;
+        }
+
+        .sidebar-left, .sidebar-right {
+            width: 200px;
+            background: #ffffff;
+            border: 1px solid #c5cdd7;
+            border-radius: 4px;
+            padding: 15px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+            height: fit-content;
+        }
+
+        .sidebar-left h3, .sidebar-right h3 {
+            font-size: 14px;
+            color: #2b587a;
+            margin-top: 0;
+            border-bottom: 1px solid #e1e3e6;
+            padding-bottom: 8px;
+        }
+
+        .menu-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 10px;
+            margin-bottom: 6px;
+            border-radius: 4px;
+            text-decoration: none;
+            color: #333;
+            font-size: 13px;
+            background: #f7f8fa;
+            border: 1px solid #e1e3e6;
+            transition: background 0.2s;
+            cursor: pointer;
+        }
+
+        .menu-item:hover {
+            background: #ebf0f5;
+            border-color: #b9c2c8;
+        }
+
+        .menu-item.active {
+            background: #e2e8f0;
+            font-weight: bold;
+        }
+
+        .menu-icon {
+            width: 18px;
+            height: 18px;
+            object-fit: contain;
+        }
+
+        .content-main {
+            flex-grow: 1;
+            background: #ffffff;
+            border: 1px solid #c5cdd7;
+            border-radius: 4px;
+            padding: 15px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        }
+
+        h2 {
+            color: #2b587a;
+            font-size: 18px;
+            margin-top: 0;
+            border-bottom: 1px solid #e1e3e6;
+            padding-bottom: 8px;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+            display: flex;
+            gap: 8px;
+        }
+
+        input[type="text"] {
+            flex-grow: 1;
+            padding: 8px 10px;
+            font-size: 13px;
+            border: 1px solid #b9c2c8;
+            border-radius: 3px;
+            outline: none;
+        }
+
+        button {
+            padding: 8px 15px;
+            font-size: 13px;
+            font-weight: bold;
+            color: #fff;
+            background: linear-gradient(to bottom, #5281b8 0%, #436e9e 100%);
+            border: 1px solid #3b608a;
+            border-radius: 3px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background: linear-gradient(to bottom, #5d8ec6 0%, #4c7aa9 100%);
+        }
+
+        .theme-card {
+            background: #f7f8fa;
+            border: 1px solid #e1e3e6;
+            border-radius: 6px;
+            padding: 12px;
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .theme-info h4 {
+            margin: 0 0 5px 0;
+            color: #2b587a;
+            font-size: 14px;
+        }
+
+        .theme-info p {
+            margin: 0;
+            font-size: 12px;
+            color: #666;
+        }
+
+        .delete-btn {
+            background: linear-gradient(to bottom, #e74c3c 0%, #c0392b 100%);
+            border: 1px solid #a93226;
+            padding: 5px 10px;
+            font-size: 12px;
+        }
+
+        .delete-btn:hover {
+            background: linear-gradient(to bottom, #ec7063 0%, #cb4335 100%);
+        }
+
+        /* Область просмотра выбранной темы */
+        #themeView {
+            display: none;
+        }
+
+        .message-box {
+            border: 1px solid #c5cdd7;
+            height: 300px;
+            overflow-y: scroll;
+            padding: 10px;
+            background: #fafbfc;
+            margin-bottom: 10px;
+            border-radius: 3px;
+        }
+
+        .msg-item {
+            margin-bottom: 8px;
+            padding: 6px 10px;
+            background: #fff;
+            border: 1px solid #e1e3e6;
+            border-radius: 4px;
+            font-size: 13px;
+        }
+    </style>
+
+    <!-- Подключаем Firebase для проверки авторизации -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyAtjgLbbXe-1fmL5hu409vNgBampz97ndo",
+            authDomain: "globalchat-0502.firebaseapp.com",
+            projectId: "globalchat-0502",
+            storageBucket: "globalchat-0502.firebasestorage.app",
+            messagingSenderId: "726374747402",
+            appId: "1:726374747402:web:858f55fc74c4f68f133ef3"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        let currentUser = null;
+
+        onAuthStateChanged(auth, (user) => {
+            currentUser = user;
+            if (!user) {
+                alert('Пожалуйста, войдите в систему на главной странице!');
+                window.location.href = 'index.html';
+            } else {
+                loadThemes();
+            }
+        });
+
+        // Логика тем
+        window.createTheme = function() {
+            const titleInput = document.getElementById('themeTitleInput');
+            const title = titleInput.value.trim();
+            if (!title) return;
+
+            let themes = JSON.parse(localStorage.getItem('user_themes') || '[]');
+            const newTheme = {
+                id: Date.now(),
+                title: title,
+                author: currentUser.displayName || 'Аноним',
+                messages: []
+            };
+
+            themes.push(newTheme);
+            localStorage.setItem('user_themes', JSON.stringify(themes));
+            titleInput.value = '';
+            loadThemes();
+        };
+
+        window.deleteTheme = function(id) {
+            let themes = JSON.parse(localStorage.getItem('user_themes') || '[]');
+            themes = themes.filter(t => t.id !== id);
+            localStorage.setItem('user_themes', JSON.stringify(themes));
+            loadThemes();
+            document.getElementById('themeView').style.display = 'none';
+            document.getElementById('themesListSection').style.display = 'block';
+        };
+
+        window.loadThemes = function() {
+            const listEl = document.getElementById('themesList');
+            const themes = JSON.parse(localStorage.getItem('user_themes') || '[]');
+            
+            listEl.innerHTML = '';
+            if (themes.length === 0) {
+                listEl.innerHTML = '<p style="color: #666; font-size: 13px;">Пока нет созданных тем. Создайте первую!</p>';
+                return;
+            }
+
+            themes.forEach(theme => {
+                const card = document.createElement('div');
+                card.className = 'theme-card';
+                card.innerHTML = `
+                    <div class="theme-info" style="cursor: pointer; flex-grow: 1;" onclick="openTheme(${theme.id})">
+                        <h4>📌 ${theme.title}</h4>
+                        <p>Автор: ${theme.author} | Сообщений: ${theme.messages.length}</p>
+                    </div>
+                    <button class="delete-btn" onclick="deleteTheme(${theme.id})">Удалить</button>
+                `;
+                listEl.appendChild(card);
+            });
+        };
+
+        let activeThemeId = null;
+
+        window.openTheme = function(id) {
+            activeThemeId = id;
+            document.getElementById('themesListSection').style.display = 'none';
+            document.getElementById('themeView').style.display = 'block';
+            renderThemeMessages();
+        };
+
+        window.closeThemeView = function() {
+            activeThemeId = null;
+            document.getElementById('themeView').style.display = 'none';
+            document.getElementById('themesListSection').style.display = 'block';
+            loadThemes();
+        };
+
+        window.sendThemeMessage = function() {
+            const input = document.getElementById('themeMsgInput');
+            const text = input.value.trim();
+            if (!text || activeThemeId === null) return;
+
+            let themes = JSON.parse(localStorage.getItem('user_themes') || '[]');
+            const theme = themes.find(t => t.id === activeThemeId);
+            if (theme) {
+                theme.messages.push({
+                    author: currentUser.displayName || 'Аноним',
+                    text: text
+                });
+                localStorage.setItem('user_themes', JSON.stringify(themes));
+                input.value = '';
+                renderThemeMessages();
+            }
+        };
+
+        function renderThemeMessages() {
+            let themes = JSON.parse(localStorage.getItem('user_themes') || '[]');
+            const theme = themes.find(t => t.id === activeThemeId);
+            if (!theme) return;
+
+            document.getElementById('currentThemeTitle').textContent = theme.title;
+            const container = document.getElementById('themeMessagesContainer');
+            container.innerHTML = '';
+
+            theme.messages.forEach(m => {
+                const div = document.createElement('div');
+                div.className = 'msg-item';
+                div.innerHTML = `<b>${m.author}:</b> ${m.text}`;
+                container.appendChild(div);
+            });
+            container.scrollTop = container.scrollHeight;
+        }
+    </script>
+</head>
+<body>
+
+    <div class="app-container">
+        
+        <!-- ЛЕВАЯ ПАНЕЛЬ -->
+        <div class="sidebar-left">
+            <h3>Меню</h3>
+            <a href="settings.html" class="menu-item">
+                <img src="https://img.icons8.com/color/48/settings.png" class="menu-icon" alt="settings">
+                Settings
+            </a>
+            <a href="profile.html" class="menu-item">
+                <img src="https://img.icons8.com/color/48/user-male-circle.png" class="menu-icon" alt="profile">
+                Profile
+            </a>
+            <a href="index.html" class="menu-item">
+                <img src="https://img.icons8.com/color/48/chat.png" class="menu-icon" alt="chat">
+                Chat
+            </a>
+        </div>
+
+        <!-- ЦЕНТРАЛЬНАЯ ПАНЕЛЬ (Темы / Разделы) -->
+        <div class="content-main">
+            
+            <!-- Секция списка тем и создания -->
+            <div id="themesListSection">
+                <h2>📂 Темы для обсуждений</h2>
+                
+                <div class="form-group">
+                    <input type="text" id="themeTitleInput" placeholder="Название новой темы или вопроса...">
+                    <button onclick="createTheme()">Создать тему</button>
+                </div>
+
+                <div id="themesList"></div>
+            </div>
+
+            <!-- Секция внутри конкретной темы (вопросы и ответы) -->
+            <div id="themeView">
+                <button onclick="closeThemeView()" style="margin-bottom: 10px; background: #7f8c8d; border: none;">← Назад к списку тем</button>
+                <h2 id="currentThemeTitle"></h2>
+                
+                <div id="themeMessagesContainer" class="message-box"></div>
+
+                <div class="form-group">
+                    <input type="text" id="themeMsgInput" placeholder="Написать ответ или вопрос...">
+                    <button onclick="sendThemeMessage()">Отправить</button>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- ПРАВАЯ ПАНЕЛЬ -->
+        <div class="sidebar-right">
+        <h3>Themes</h3>
+            <a href="themes.html" class="menu-item" style="border-left: 4px solid #5281b8;">Разделы тем</a>
+        </div>
+
+    </div>
+
+</body>
+</html>

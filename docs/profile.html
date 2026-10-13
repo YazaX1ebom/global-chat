@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Global Chat - Profile</title>
+    <style>
+        body { 
+            font-family: Tahoma, Arial, sans-serif; 
+            margin: 0; 
+            padding: 20px; 
+            background: #edeef0; 
+            display: flex;
+            justify-content: center;
+        }
+
+        .app-container {
+            display: flex;
+            width: 100%;
+            max-width: 1100px;
+            gap: 15px;
+        }
+
+        .sidebar-left, .sidebar-right {
+            width: 200px;
+            background: #ffffff;
+            border: 1px solid #c5cdd7;
+            border-radius: 4px;
+            padding: 15px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+            height: fit-content;
+        }
+
+        .sidebar-left h3, .sidebar-right h3 {
+            font-size: 14px;
+            color: #2b587a;
+            margin-top: 0;
+            border-bottom: 1px solid #e1e3e6;
+            padding-bottom: 8px;
+        }
+
+        .menu-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 10px;
+            margin-bottom: 6px;
+            border-radius: 4px;
+            text-decoration: none;
+            color: #333;
+            font-size: 13px;
+            background: #f7f8fa;
+            border: 1px solid #e1e3e6;
+            transition: background 0.2s;
+        }
+
+        .menu-item:hover {
+            background: #ebf0f5;
+            border-color: #b9c2c8;
+        }
+
+        .menu-item.active {
+            background: #e2e8f0;
+            font-weight: bold;
+        }
+
+        .menu-icon {
+            width: 18px;
+            height: 18px;
+            object-fit: contain;
+        }
+
+        .content-main {
+            flex-grow: 1;
+            background: #ffffff;
+            border: 1px solid #c5cdd7;
+            border-radius: 4px;
+            padding: 15px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        }
+
+        h2 {
+            color: #2b587a;
+            font-size: 18px;
+            margin-top: 0;
+            border-bottom: 1px solid #e1e3e6;
+            padding-bottom: 8px;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        label {
+            display: block;
+            font-size: 12px;
+            color: #555;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+
+        input[type="text"] {
+            width: 100%;
+            padding: 8px 10px;
+            font-size: 13px;
+            border: 1px solid #b9c2c8;
+            border-radius: 3px;
+            outline: none;
+            box-sizing: border-box;
+        }
+
+        input:focus {
+            border-color: #5181b8;
+        }
+
+        button {
+            padding: 8px 15px;
+            font-size: 13px;
+            font-weight: bold;
+            color: #fff;
+            background: linear-gradient(to bottom, #5281b8 0%, #436e9e 100%);
+            border: 1px solid #3b608a;
+            border-radius: 3px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background: linear-gradient(to bottom, #5d8ec6 0%, #4c7aa9 100%);
+        }
+
+        .avatar-preview {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 1px solid #c5cdd7;
+            margin-bottom: 10px;
+            background: #f7f8fa;
+        }
+    </style>
+
+    <!-- Подключаем Firebase SDK для управления профилем -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getAuth, updateProfile, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyAtjgLbbXe-1fmL5hu409vNgBampz97ndo",
+            authDomain: "globalchat-0502.firebaseapp.com",
+            projectId: "globalchat-0502",
+            storageBucket: "globalchat-0502.firebasestorage.app",
+            messagingSenderId: "726374747402",
+            appId: "1:726374747402:web:858f55fc74c4f68f133ef3"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+
+        const displayNameInput = document.getElementById('displayNameInput');
+        const photoUrlInput = document.getElementById('photoUrlInput');
+        const avatarPreview = document.getElementById('avatarPreview');
+        const saveBtn = document.getElementById('saveBtn');
+
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                displayNameInput.value = user.displayName || '';
+                photoUrlInput.value = user.photoURL || '';
+                if (user.photoURL) {
+                    avatarPreview.src = user.photoURL;
+                }
+            } else {
+                alert('Пожалуйста, войдите в систему на главной странице!');
+                window.location.href = 'index.html';
+            }
+        });
+
+        saveBtn.onclick = () => {
+            const user = auth.currentUser;
+            if (!user) return;
+
+            const newName = displayNameInput.value.trim();
+            const newPhotoUrl = photoUrlInput.value.trim();
+
+            updateProfile(user, {
+                displayName: newName,
+                photoURL: newPhotoUrl
+            }).then(() => {
+                alert('Профиль успешно обновлен!');
+                if (newPhotoUrl) avatarPreview.src = newPhotoUrl;
+            }).catch((error) => {
+                console.error('Ошибка обновления профиля:', error);
+                alert('Ошибка: ' + error.message);
+            });
+        };
+    </script>
+</head>
+<body>
+
+    <div class="app-container">
+        
+        <!-- ЛЕВАЯ ПАНЕЛЬ (Меню) -->
+        <div class="sidebar-left">
+            <h3>Меню</h3>
+            <a href="settings.html" class="menu-item">
+                <img src="https://img.icons8.com/color/48/settings.png" class="menu-icon" alt="settings">
+                Settings
+            </a>
+            <a href="profile.html" class="menu-item active">
+                <img src="https://img.icons8.com/color/48/user-male-circle.png" class="menu-icon" alt="profile">
+                Profile
+            </a>
+            <a href="index.html" class="menu-item">
+                <img src="https://img.icons8.com/color/48/chat.png" class="menu-icon" alt="chat">
+                Chat
+            </a>
+        </div>
+
+        <!-- ЦЕНТРАЛЬНАЯ ПАНЕЛЬ (Профиль) -->
+        <div class="content-main">
+            <h2>👤 Управление профилем</h2>
+            
+            <div style="text-align: center; margin-bottom: 20px;">
+                <img id="avatarPreview" class="avatar-preview" src="https://img.icons8.com/color/48/user-male-circle.png" alt="Avatar">
+            </div>
+
+            <div class="form-group">
+                <label for="displayNameInput">Имя пользователя:</label>
+                <input type="text" id="displayNameInput" placeholder="Введите ваше имя">
+            </div>
+
+            <div class="form-group">
+                <label for="photoUrlInput">Ссылка на аватарку (URL изображения):</label>
+                <input type="text" id="photoUrlInput" placeholder="https://example.com/avatar.jpg">
+            </div>
+
+            <button id="saveBtn">Сохранить изменения</button>
+        </div>
+
+        <!-- ПРАВАЯ ПАНЕЛЬ -->
+        <div class="sidebar-right">
+            <h3>Themes</h3>
+            <a href="themes.html" class="menu-item" style="border-left: 4px solid #5281b8;">Разделы тем</a>
+        </div>
+
+    </div>
+
+</body>
+</html>
