@@ -99,12 +99,27 @@
             cursor: pointer;
         }
     </style>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const showSecondsCheckbox = document.getElementById('showSecondsCheckbox');
+            
+            // Загружаем сохраненную настройку (по умолчанию включено - true)
+            const savedSetting = localStorage.getItem('setting_show_seconds');
+            showSecondsCheckbox.checked = savedSetting !== 'false';
+
+            // При изменении сохраняем в localStorage
+            showSecondsCheckbox.onchange = () => {
+                localStorage.setItem('setting_show_seconds', showSecondsCheckbox.checked);
+            };
+        });
+    </script>
 </head>
 <body>
 
     <div class="app-container">
         
-        <!-- ЛЕВАЯ ПАНЕЛЬ (Меню с рабочими ссылками) -->
+        <!-- ЛЕВАЯ ПАНЕЛЬ -->
         <div class="sidebar-left">
             <h3>Меню</h3>
             <a href="settings.html" class="menu-item active">
@@ -124,19 +139,24 @@
         <!-- ЦЕНТРАЛЬНАЯ ПАНЕЛЬ (Настройки) -->
         <div class="content-main">
             <h2>⚙️ Настройки</h2>
+            
+            <div class="setting-row">
+                <label>
+                    <input type="checkbox" id="showSecondsCheckbox"> 
+                    Показывать секунды в времени сообщений
+                </label>
+            </div>
+            
             <div class="setting-row">
                 <label><input type="checkbox" checked> Включить звуковые уведомления</label>
-            </div>
-            <div class="setting-row">
-                <label><input type="checkbox"> Показывать время сообщений</label>
             </div>
         </div>
 
         <!-- ПРАВАЯ ПАНЕЛЬ -->
         <div class="sidebar-right">
             <h3>Themes</h3>
-        <a href="themes.html" class="menu-item" style="border-left: 4px solid #5281b8;">Разделы тем</a>
-    </div>
+            <a href="themes.html" class="menu-item" style="border-left: 4px solid #5281b8;">Разделы тем</a>
+        </div>
 
     </div>
 

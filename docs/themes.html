@@ -126,6 +126,12 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
+            transition: background 0.2s;
+        }
+
+        .theme-card.unread {
+            background: #fef9e7;
+            border-color: #f39c12;
         }
 
         .theme-info h4 {
@@ -151,7 +157,6 @@
             background: linear-gradient(to bottom, #ec7063 0%, #cb4335 100%);
         }
 
-        /* Область просмотра выбранной темы */
         #themeView {
             display: none;
         }
@@ -167,16 +172,38 @@
         }
 
         .msg-item {
-            margin-bottom: 8px;
-            padding: 6px 10px;
+            margin-bottom: 10px;
+            padding: 8px 10px;
             background: #fff;
             border: 1px solid #e1e3e6;
             border-radius: 4px;
             font-size: 13px;
         }
+
+        /* Стиль для даты сверху сообщения */
+        .msg-date-top {
+            font-size: 11px;
+            color: #7f8c8d;
+            font-weight: bold;
+            margin-bottom: 4px;
+            border-bottom: 1px dashed #eee;
+            padding-bottom: 2px;
+        }
+
+        .msg-content-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+        }
+
+        .msg-time {
+            font-size: 11px;
+            color: #888;
+            margin-left: 10px;
+            white-space: nowrap;
+        }
     </style>
 
-    <!-- Подключаем Firebase для проверки авторизации -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
         import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
@@ -204,7 +231,6 @@
             }
         });
 
-        // Логика тем
         window.createTheme = function() {
             const titleInput = document.getElementById('themeTitleInput');
             const title = titleInput.value.trim();
@@ -215,7 +241,8 @@
                 id: Date.now(),
                 title: title,
                 author: currentUser.displayName || 'Аноним',
-                messages: []
+                messages: [],
+                hasUnread: false
             };
 
             themes.push(newTheme);
@@ -245,10 +272,11 @@
 
             themes.forEach(theme => {
                 const card = document.createElement('div');
-                card.className = 'theme-card';
+                card.className = 'theme-card' + (theme.hasUnread ? ' unread' : '');
+                
                 card.innerHTML = `
                     <div class="theme-info" style="cursor: pointer; flex-grow: 1;" onclick="openTheme(${theme.id})">
-                        <h4>📌 ${theme.title}</h4>
+                        <h4>📌 ${theme.title} ${theme.hasUnread ? '<span style="color: #d35400; font-size: 11px;">● Новое</span>' : ''}</h4>
                         <p>Автор: ${theme.author} | Сообщений: ${theme.messages.length}</p>
                     </div>
                     <button class="delete-btn" onclick="deleteTheme(${theme.id})">Удалить</button>
@@ -261,6 +289,14 @@
 
         window.openTheme = function(id) {
             activeThemeId = id;
+            
+            let themes = JSON.parse(localStorage.getItem('user_themes') || '[]');
+            const theme = themes.find(t => t.id === id);
+            if (theme) {
+                theme.hasUnread = false;
+                localStorage.setItem('user_themes', JSON.stringify(themes));
+            }
+
             document.getElementById('themesListSection').style.display = 'none';
             document.getElementById('themeView').style.display = 'block';
             renderThemeMessages();
@@ -278,17 +314,32 @@
             const text = input.value.trim();
             if (!text || activeThemeId === null) return;
 
+            const now = new Date();
+            const dateStr = now.toLocaleDateString(); // Дата и год (например, 13.10.2026)
+            
+            const showSeconds = localStorage.getItem('setting_show_seconds') !== 'false';
+            const timeStr = now.toLocaleTimeString([], { 
+                hour: '2-digit', 
+                minute: '2-digit', 
+                ...(showSeconds ? { second: '2-digit' } : {}) 
+            });
+
             let themes = JSON.parse(localStorage.getItem('user_themes') || '[]');
-            const theme = themes.find(t => t.id === activeThemeId);
-            if (theme) {
-                theme.messages.push({
-                    author: currentUser.displayName || 'Аноним',
-                    text: text
-                });
-                localStorage.setItem('user_themes', JSON.stringify(themes));
-                input.value = '';
-                renderThemeMessages();
-            }
+            
+            themes.forEach(t => {
+                if (t.id === activeThemeId) {
+                    t.messages.push({
+                        author: currentUser.displayName || 'Аноним',
+                        text: text,
+                        date: dateStr,
+                        time: timeStr
+                    });
+                }
+            });
+
+            localStorage.setItem('user_themes', JSON.stringify(themes));
+            input.value = '';
+            renderThemeMessages();
         };
 
         function renderThemeMessages() {
@@ -303,7 +354,13 @@
             theme.messages.forEach(m => {
                 const div = document.createElement('div');
                 div.className = 'msg-item';
-                div.innerHTML = `<b>${m.author}:</b> ${m.text}`;
+                div.innerHTML = `
+                    <div class="msg-date-top">📅 ${m.date || ''}</div>
+                    <div class="msg-content-row">
+                        <div><b>${m.author}:</b> ${m.text}</div>
+                        <div class="msg-time">${m.time || ''}</div>
+                    </div>
+                `;
                 container.appendChild(div);
             });
             container.scrollTop = container.scrollHeight;
@@ -314,7 +371,6 @@
 
     <div class="app-container">
         
-        <!-- ЛЕВАЯ ПАНЕЛЬ -->
         <div class="sidebar-left">
             <h3>Меню</h3>
             <a href="settings.html" class="menu-item">
@@ -331,10 +387,8 @@
             </a>
         </div>
 
-        <!-- ЦЕНТРАЛЬНАЯ ПАНЕЛЬ (Темы / Разделы) -->
         <div class="content-main">
             
-            <!-- Секция списка тем и создания -->
             <div id="themesListSection">
                 <h2>📂 Темы для обсуждений</h2>
                 
@@ -346,7 +400,6 @@
                 <div id="themesList"></div>
             </div>
 
-            <!-- Секция внутри конкретной темы (вопросы и ответы) -->
             <div id="themeView">
                 <button onclick="closeThemeView()" style="margin-bottom: 10px; background: #7f8c8d; border: none;">← Назад к списку тем</button>
                 <h2 id="currentThemeTitle"></h2>
@@ -361,10 +414,9 @@
 
         </div>
 
-        <!-- ПРАВАЯ ПАНЕЛЬ -->
         <div class="sidebar-right">
-        <h3>Themes</h3>
-            <a href="themes.html" class="menu-item" style="border-left: 4px solid #5281b8;">Разделы тем</a>
+            <h3>Themes</h3>
+            <a href="themes.html" class="menu-item active" style="border-left: 4px solid #5281b8;">Разделы тем</a>
         </div>
 
     </div>
