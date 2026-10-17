@@ -129,11 +129,6 @@
             transition: background 0.2s;
         }
 
-        .theme-card.unread {
-            background: #fef9e7;
-            border-color: #f39c12;
-        }
-
         .theme-info h4 {
             margin: 0 0 5px 0;
             color: #2b587a;
@@ -180,7 +175,6 @@
             font-size: 13px;
         }
 
-        /* Стиль для даты сверху сообщения */
         .msg-date-top {
             font-size: 11px;
             color: #7f8c8d;
@@ -204,9 +198,22 @@
         }
     </style>
 
+    <!-- Подключаем Firebase SDK + Firestore -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
         import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+        import { 
+            getFirestore, 
+            collection, 
+            addDoc, 
+            deleteDoc, 
+            doc, 
+            onSnapshot, 
+            updateDoc, 
+            arrayUnion, 
+            query, 
+            orderBy 
+        } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyAtjgLbbXe-1fmL5hu409vNgBampz97ndo",
@@ -219,7 +226,11 @@
 
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
+        const db = getFirestore(app);
+
         let currentUser = null;
+        let activeThemeId = null;
+        let unsubscribeMessages = null;
 
         onAuthStateChanged(auth, (user) => {
             currentUser = user;
@@ -227,95 +238,107 @@
                 alert('Пожалуйста, войдите в систему на главной странице!');
                 window.location.href = 'index.html';
             } else {
-                loadThemes();
+                listenToThemes();
             }
         });
 
-        window.createTheme = function() {
+        // Слушаем изменения тем в базе в реальном времени
+        function listenToThemes() {
+            const themesRef = collection(db, "themes");
+            const q = query(themesRef, orderBy("createdAt", "desc"));
+
+            onSnapshot(q, (snapshot) => {
+                const listEl = document.getElementById('themesList');
+                listEl.innerHTML = '';
+
+                if (snapshot.empty) {
+                    listEl.innerHTML = '<p style="color: #666; font-size: 13px;">Пока нет созданных тем. Создайте первую!</p>';
+                    return;
+                }
+
+                snapshot.forEach((docSnap) => {
+                    const theme = docSnap.data();
+                    const themeId = docSnap.id;
+
+                    const card = document.createElement('div');
+                    card.className = 'theme-card';
+                    card.innerHTML = `
+                        <div class="theme-info" style="cursor: pointer; flex-grow: 1;" onclick="openTheme('${themeId}', '${theme.title}')">
+                            <h4>📌 ${theme.title}</h4>
+                            <p>Автор: ${theme.author} | Сообщений: ${(theme.messages || []).length}</p>
+                        </div>
+                        <button class="delete-btn" onclick="deleteTheme('${themeId}')">Удалить</button>
+                    `;
+                    listEl.appendChild(card);
+                });
+            });
+        }
+
+        // Создание темы в базе Firestore
+        window.createTheme = async function() {
             const titleInput = document.getElementById('themeTitleInput');
             const title = titleInput.value.trim();
             if (!title) return;
 
-            let themes = JSON.parse(localStorage.getItem('user_themes') || '[]');
-            const newTheme = {
-                id: Date.now(),
-                title: title,
-                author: currentUser.displayName || 'Аноним',
-                messages: [],
-                hasUnread: false
-            };
-
-            themes.push(newTheme);
-            localStorage.setItem('user_themes', JSON.stringify(themes));
-            titleInput.value = '';
-            loadThemes();
-        };
-
-        window.deleteTheme = function(id) {
-            let themes = JSON.parse(localStorage.getItem('user_themes') || '[]');
-            themes = themes.filter(t => t.id !== id);
-            localStorage.setItem('user_themes', JSON.stringify(themes));
-            loadThemes();
-            document.getElementById('themeView').style.display = 'none';
-            document.getElementById('themesListSection').style.display = 'block';
-        };
-
-        window.loadThemes = function() {
-            const listEl = document.getElementById('themesList');
-            const themes = JSON.parse(localStorage.getItem('user_themes') || '[]');
-            
-            listEl.innerHTML = '';
-            if (themes.length === 0) {
-                listEl.innerHTML = '<p style="color: #666; font-size: 13px;">Пока нет созданных тем. Создайте первую!</p>';
-                return;
+            try {
+                await addDoc(collection(db, "themes"), {
+                    title: title,
+                    author: currentUser.displayName || 'Аноним',
+                    createdAt: Date.now(),
+                    messages: []
+                });
+                titleInput.value = '';
+            } catch (e) {
+                console.error("Ошибка при создании темы: ", e);
+                alert("Ошибка сохранения на сервере: " + e.message);
             }
+        };
 
-            themes.forEach(theme => {
-                const card = document.createElement('div');
-                card.className = 'theme-card' + (theme.hasUnread ? ' unread' : '');
-                
-                card.innerHTML = `
-                    <div class="theme-info" style="cursor: pointer; flex-grow: 1;" onclick="openTheme(${theme.id})">
-                        <h4>📌 ${theme.title} ${theme.hasUnread ? '<span style="color: #d35400; font-size: 11px;">● Новое</span>' : ''}</h4>
-                        <p>Автор: ${theme.author} | Сообщений: ${theme.messages.length}</p>
-                    </div>
-                    <button class="delete-btn" onclick="deleteTheme(${theme.id})">Удалить</button>
-                `;
-                listEl.appendChild(card);
+        // Удаление темы из базы
+        window.deleteTheme = async function(id) {
+            try {
+                await deleteDoc(doc(db, "themes", id));
+                if (activeThemeId === id) {
+                    closeThemeView();
+                }
+            } catch (e) {
+                console.error("Ошибка при удалении темы: ", e);
+                alert("Ошибка удаления: " + e.message);
+            }
+        };
+
+        // Открытие темы и подписка на её сообщения
+        window.openTheme = function(id, title) {
+            activeThemeId = id;
+            document.getElementById('themesListSection').style.display = 'none';
+            document.getElementById('themeView').style.display = 'block';
+            document.getElementById('currentThemeTitle').textContent = title;
+
+            if (unsubscribeMessages) unsubscribeMessages();
+
+            // Подписываемся на обновления конкретной темы
+            unsubscribeMessages = onSnapshot(doc(db, "themes", id), (docSnap) => {
+                if (!docSnap.exists()) return;
+                const theme = docSnap.data();
+                renderThemeMessages(theme.messages || []);
             });
         };
 
-        let activeThemeId = null;
-
-        window.openTheme = function(id) {
-            activeThemeId = id;
-            
-            let themes = JSON.parse(localStorage.getItem('user_themes') || '[]');
-            const theme = themes.find(t => t.id === id);
-            if (theme) {
-                theme.hasUnread = false;
-                localStorage.setItem('user_themes', JSON.stringify(themes));
-            }
-
-            document.getElementById('themesListSection').style.display = 'none';
-            document.getElementById('themeView').style.display = 'block';
-            renderThemeMessages();
-        };
-
         window.closeThemeView = function() {
+            if (unsubscribeMessages) unsubscribeMessages();
             activeThemeId = null;
             document.getElementById('themeView').style.display = 'none';
             document.getElementById('themesListSection').style.display = 'block';
-            loadThemes();
         };
 
-        window.sendThemeMessage = function() {
+        // Отправка сообщения в тему (сохраняется в Firestore)
+        window.sendThemeMessage = async function() {
             const input = document.getElementById('themeMsgInput');
             const text = input.value.trim();
-            if (!text || activeThemeId === null) return;
+            if (!text || !activeThemeId) return;
 
             const now = new Date();
-            const dateStr = now.toLocaleDateString(); // Дата и год (например, 13.10.2026)
+            const dateStr = now.toLocaleDateString();
             
             const showSeconds = localStorage.getItem('setting_show_seconds') !== 'false';
             const timeStr = now.toLocaleTimeString([], { 
@@ -324,34 +347,31 @@
                 ...(showSeconds ? { second: '2-digit' } : {}) 
             });
 
-            let themes = JSON.parse(localStorage.getItem('user_themes') || '[]');
-            
-            themes.forEach(t => {
-                if (t.id === activeThemeId) {
-                    t.messages.push({
-                        author: currentUser.displayName || 'Аноним',
-                        text: text,
-                        date: dateStr,
-                        time: timeStr
-                    });
-                }
-            });
+            const newMsg = {
+                author: currentUser.displayName || 'Аноним',
+                text: text,
+                date: dateStr,
+                time: timeStr,
+                timestamp: Date.now()
+            };
 
-            localStorage.setItem('user_themes', JSON.stringify(themes));
-            input.value = '';
-            renderThemeMessages();
+            try {
+                const themeRef = doc(db, "themes", activeThemeId);
+                await updateDoc(themeRef, {
+                    messages: arrayUnion(newMsg)
+                });
+                input.value = '';
+            } catch (e) {
+                console.error("Ошибка при отправке сообщения: ", e);
+                alert("Не удалось отправить сообщение: " + e.message);
+            }
         };
 
-        function renderThemeMessages() {
-            let themes = JSON.parse(localStorage.getItem('user_themes') || '[]');
-            const theme = themes.find(t => t.id === activeThemeId);
-            if (!theme) return;
-
-            document.getElementById('currentThemeTitle').textContent = theme.title;
+        function renderThemeMessages(messages) {
             const container = document.getElementById('themeMessagesContainer');
             container.innerHTML = '';
 
-            theme.messages.forEach(m => {
+            messages.forEach(m => {
                 const div = document.createElement('div');
                 div.className = 'msg-item';
                 div.innerHTML = `
@@ -397,7 +417,7 @@
                     <button onclick="createTheme()">Создать тему</button>
                 </div>
 
-                <div id="themesList"></div>
+                <div id="themesList">Загрузка тем с сервера...</div>
             </div>
 
             <div id="themeView">

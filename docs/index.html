@@ -166,7 +166,7 @@
     <!-- Подключаем Firebase SDK -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+        import { getAuth, GoogleAuthProvider, signInWithPopup, createUserWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyAtjgLbbXe-1fmL5hu409vNgBampz97ndo",
@@ -184,17 +184,50 @@
         let currentUser = null;
 
         const loginBtn = document.getElementById('loginBtn');
+        const siteRegBtn = document.getElementById('siteRegBtn');
         const logoutBtn = document.getElementById('logoutBtn');
         const userInfo = document.getElementById('userInfo');
         const messageInput = document.getElementById('messageInput');
         const sendBtn = document.getElementById('sendBtn');
+        const regModal = document.getElementById('regModal');
+        const submitRegBtn = document.getElementById('submitRegBtn');
+        const cancelRegBtn = document.getElementById('cancelRegBtn');
 
-        // Используем popup-окно для входа
+        // Вход через Google
         loginBtn.onclick = () => {
             signInWithPopup(auth, provider)
                 .catch((error) => {
                     console.error("Ошибка входа через popup:", error);
                     alert("Не удалось войти: " + error.message);
+                });
+        };
+
+        // Открытие формы регистрации по кнопке
+        siteRegBtn.onclick = () => {
+            regModal.style.display = 'block';
+        };
+
+        cancelRegBtn.onclick = () => {
+            regModal.style.display = 'none';
+        };
+
+        // Регистрация на сайте через email и пароль
+        submitRegBtn.onclick = () => {
+            const email = document.getElementById('regEmail').value.trim();
+            const password = document.getElementById('regPassword').value.trim();
+            if (!email || !password) {
+                alert('Заполните все поля!');
+                return;
+            }
+
+            createUserWithEmailAndPassword(auth, email, password)
+                .then(() => {
+                    alert('Регистрация успешна!');
+                    regModal.style.display = 'none';
+                })
+                .catch((error) => {
+                    console.error("Ошибка регистрации:", error);
+                    alert("Ошибка: " + error.message);
                 });
         };
 
@@ -205,9 +238,11 @@
         onAuthStateChanged(auth, (user) => {
             currentUser = user;
             if (user) {
-                userInfo.textContent = `Привет, ${user.displayName}`;
+                userInfo.textContent = `Привет, ${user.displayName || user.email}`;
                 loginBtn.style.display = 'none';
+                siteRegBtn.style.display = 'none';
                 logoutBtn.style.display = 'inline-block';
+                regModal.style.display = 'none';
                 
                 messageInput.disabled = false;
                 sendBtn.disabled = false;
@@ -215,11 +250,12 @@
             } else {
                 userInfo.textContent = "Вы не вошли в систему";
                 loginBtn.style.display = 'inline-block';
+                siteRegBtn.style.display = 'inline-block';
                 logoutBtn.style.display = 'none';
                 
                 messageInput.disabled = true;
                 sendBtn.disabled = true;
-                messageInput.placeholder = "Войдите через Google, чтобы писать сообщения...";
+                messageInput.placeholder = "Войдите через Google или зарегистрируйтесь, чтобы писать сообщения...";
             }
         });
 
@@ -245,14 +281,15 @@
 
         window.sendMessage = function() {
             if (!currentUser) {
-                alert('Необходимо войти через Google!');
+                alert('Необходимо войти в систему!');
                 return;
             }
 
             const text = messageInput.value.trim();
             if (!text) return;
 
-            const fullMessage = `${currentUser.displayName}: ${text}`;
+            const name = currentUser.displayName || currentUser.email.split('@')[0];
+            const fullMessage = `${name}: ${text}`;
             
             if (ws && ws.readyState === WebSocket.OPEN) {
                 ws.send(fullMessage);
@@ -277,14 +314,13 @@
         <!-- ЛЕВАЯ ПАНЕЛЬ (Меню) -->
         <div class="sidebar-left">
             <h3>Меню</h3>
-    <a href="settings.html" class="menu-item">
-            <img src="https://img.icons8.com/color/48/settings.png" class="menu-icon" alt="settings">
-            Settings
-        </a>
-            <a href="#" class="menu-item">
+            <a href="settings.html" class="menu-item">
+                <img src="https://img.icons8.com/color/48/settings.png" class="menu-icon" alt="settings">
+                Settings
+            </a>
+            <a href="profile.html" class="menu-item">
                 <img src="https://img.icons8.com/color/48/user-male-circle.png" class="menu-icon" alt="profile">
                 Profile
-                
             </a>
         </div>
 
@@ -295,8 +331,22 @@
                 <div class="auth-box">
                     <span id="userInfo" style="margin-right: 10px;">Проверка авторизации...</span>
                     <button id="loginBtn">Войти через Google</button>
+                    <button id="siteRegBtn" style="background: linear-gradient(to bottom, #27ae60 0%, #219653 100%); border-color: #1e8449;">Зарегистрироваться через сайт</button>
                     <button id="logoutBtn" style="display: none;">Выйти</button>
                 </div>
+            </div>
+
+            <!-- Всплывающая или скрытая форма для регистрации через сайт -->
+            <div id="regModal" style="display: none; background: #f7f8fa; border: 1px solid #c5cdd7; padding: 12px; margin-bottom: 15px; border-radius: 4px;">
+                <h3 style="margin-top: 0; font-size: 14px; color: #2b587a;">Регистрация на сайте</h3>
+                <div style="margin-bottom: 8px;">
+                    <input type="email" id="regEmail" placeholder="Введите ваш Email" style="width: 250px;" />
+                </div>
+                <div style="margin-bottom: 8px;">
+                    <input type="password" id="regPassword" placeholder="Придумайте пароль" style="width: 250px;" />
+                </div>
+                <button id="submitRegBtn">Зарегистрироваться</button>
+                <button id="cancelRegBtn" style="background: linear-gradient(to bottom, #95a5a6 0%, #7f8c8d 100%); border-color: #717d7e;">Отмена</button>
             </div>
 
             <div id="chat"></div>
@@ -308,7 +358,7 @@
         </div>
 
         <div class="sidebar-right">
-    <h3>Themes</h3>
+            <h3>Themes</h3>
             <a href="themes.html" class="menu-item" style="border-left: 4px solid #5281b8;">Разделы тем</a>
         </div>
 

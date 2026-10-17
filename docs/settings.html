@@ -98,19 +98,33 @@
             gap: 8px;
             cursor: pointer;
         }
+
+        .status-msg {
+            margin-top: 10px;
+            font-size: 12px;
+            color: #27ae60;
+            display: none;
+            font-weight: bold;
+        }
     </style>
 
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             const showSecondsCheckbox = document.getElementById('showSecondsCheckbox');
+            const statusMsg = document.getElementById('statusMsg');
             
-            // Загружаем сохраненную настройку (по умолчанию включено - true)
+            // Загружаем сохраненную настройку (по умолчанию включено — true)
             const savedSetting = localStorage.getItem('setting_show_seconds');
             showSecondsCheckbox.checked = savedSetting !== 'false';
 
-            // При изменении сохраняем в localStorage
+            // При изменении сохраняем в localStorage и показываем уведомление
             showSecondsCheckbox.onchange = () => {
                 localStorage.setItem('setting_show_seconds', showSecondsCheckbox.checked);
+                
+                statusMsg.style.display = 'block';
+                setTimeout(() => {
+                    statusMsg.style.display = 'none';
+                }, 2000);
             };
         });
     </script>
@@ -145,10 +159,7 @@
                     <input type="checkbox" id="showSecondsCheckbox"> 
                     Показывать секунды в времени сообщений
                 </label>
-            </div>
-            
-            <div class="setting-row">
-                <label><input type="checkbox" checked> Включить звуковые уведомления</label>
+                <div id="statusMsg" class="status-msg">✓ Настройки успешно сохранены!</div>
             </div>
         </div>
 
