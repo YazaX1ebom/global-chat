@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Global Chat - Регистрация</title>
+    <style>
+        body { 
+            font-family: Tahoma, Arial, sans-serif; 
+            margin: 0; 
+            padding: 20px; 
+            background: #edeef0; 
+            display: flex;
+            justify-content: center;
+        }
+        .register-container {
+            width: 100%;
+            max-width: 650px;
+            background: #ffffff;
+            border: 1px solid #c5cdd7;
+            border-radius: 4px;
+            padding: 20px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        }
+        h2 {
+            color: #2b587a;
+            font-size: 16px;
+            margin-top: 0;
+            border-bottom: 1px solid #e1e3e6;
+            padding-bottom: 8px;
+            background: #e6ebf2;
+            padding: 8px 12px;
+            margin: -20px -20px 15px -20px;
+            border-radius: 4px 4px 0 0;
+        }
+        .fieldset-box {
+            border: 1px solid #b9c2c8;
+            border-radius: 4px;
+            padding: 12px;
+            margin-bottom: 15px;
+            background: #fcfdff;
+        }
+        .fieldset-box legend {
+            font-size: 12px;
+            font-weight: bold;
+            color: #2b587a;
+            padding: 0 5px;
+            background: #fff;
+            border: 1px solid #b9c2c8;
+            border-radius: 3px;
+        }
+        .form-row {
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-size: 13px;
+        }
+        .form-row label {
+            width: 40%;
+            font-weight: bold;
+            color: #333;
+        }
+        .form-row input, .form-row select {
+            width: 55%;
+            padding: 6px 8px;
+            font-size: 13px;
+            border: 1px solid #b9c2c8;
+            border-radius: 3px;
+            outline: none;
+        }
+        .btn-container {
+            text-align: center;
+            margin-top: 20px;
+        }
+        button {
+            padding: 8px 20px;
+            font-size: 13px;
+            font-weight: bold;
+            color: #fff;
+            background: linear-gradient(to bottom, #5281b8 0%, #436e9e 100%);
+            border: 1px solid #3b608a;
+            border-radius: 3px;
+            cursor: pointer;
+        }
+        button:hover {
+            background: linear-gradient(to bottom, #5d8ec6 0%, #4c7aa9 100%);
+        }
+        .captcha-box {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: #eef2f7;
+            padding: 8px;
+            border-radius: 3px;
+            border: 1px dashed #b9c2c8;
+            justify-content: center;
+            font-weight: bold;
+            letter-spacing: 3px;
+            color: #2b587a;
+            width: 150px;
+        }
+    </style>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getAuth, createUserWithEmailAndPassword, sendEmailVerification, updateProfile } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+        import { getFirestore, doc, setDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyAtjgLbbXe-1fmL5hu409vNgBampz97ndo",
+            authDomain: "globalchat-0502.firebaseapp.com",
+            projectId: "globalchat-0502",
+            storageBucket: "globalchat-0502.firebasestorage.app",
+            messagingSenderId: "726374747402",
+            appId: "1:726374747402:web:858f55fc74c4f68f133ef3"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        // Большой список вопросов и ответов для антиспама (ответы храним в нижнем регистре)
+        const antiSpamQuestions = [
+            { question: 'Напишите слово "Йоу"', answer: 'йоу' },
+            { question: 'Сколько будет 2 + 3?', answer: '5' },
+            { question: 'Какого цвета небо? (напишите цвет)', answer: 'синий' },
+            { question: 'Напишите слово "Чат"', answer: 'чат' },
+            { question: 'Какое сейчас время года? (зима/весна/лето/осень)', answer: 'осень' },
+            { question: 'Сколько дней в неделе?', answer: '7' },
+            { question: 'Напишите цифру 9 словами', answer: 'девять' },
+            { question: 'Как называется планета, на которой мы живем?', answer: 'земля' },
+            { question: 'Напишите слово "Форум"', answer: 'форум' },
+            { question: 'Сколько пальцев на одной руке?', answer: '5' }
+        ];
+
+        let currentAntiSpamAnswer = "";
+        let generatedCaptcha = "";
+
+        function createCaptcha() {
+            const chars = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+            let code = "";
+            for (let i = 0; i < 6; i++) {
+                code += chars[Math.floor(Math.random() * chars.length)];
+            }
+            generatedCaptcha = code;
+            document.getElementById('captchaText').textContent = code;
+        }
+
+        // Выбор случайного вопроса антиспама при загрузке
+        function initAntiSpam() {
+            const randomIndex = Math.floor(Math.random() * antiSpamQuestions.length);
+            const selected = antiSpamQuestions[randomIndex];
+            
+            document.getElementById('antiSpamQuestionLabel').textContent = selected.question + ":";
+            currentAntiSpamAnswer = selected.answer;
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            createCaptcha();
+            initAntiSpam();
+            
+            document.getElementById('reloadCaptcha').onclick = (e) => {
+                e.preventDefault();
+                createCaptcha();
+                initAntiSpam(); // Также меняем вопрос при перезагрузке капчи
+            };
+
+            document.getElementById('registerBtn').onclick = async () => {
+                const username = document.getElementById('username').value.trim();
+                const email = document.getElementById('email').value.trim();
+                const confirmEmail = document.getElementById('confirmEmail').value.trim();
+                const password = document.getElementById('password').value.trim();
+                const confirmPassword = document.getElementById('confirmPassword').value.trim();
+                
+                const birthMonth = document.getElementById('birthMonth').value;
+                const birthDay = document.getElementById('birthDay').value;
+                const birthYear = document.getElementById('birthYear').value;
+                
+                const captchaInput = document.getElementById('captchaInput').value.trim();
+                const antiSpamInput = document.getElementById('antiSpam').value.trim().toLowerCase();
+                const gender = document.getElementById('gender').value;
+                const timezone = document.getElementById('timezone').value;
+
+                // Проверки
+                if (!username || !email || !password) {
+                    alert('Заполните все обязательные поля!');
+                    return;
+                }
+                if (email !== confirmEmail) {
+                    alert('Адреса Email не совпадают!');
+                    return;
+                }
+                if (password !== confirmPassword) {
+                    alert('Пароли не совпадают!');
+                    return;
+                }
+                if (password.length < 6) {
+                    alert('Пароль должен быть не менее 6 символов!');
+                    return;
+                }
+                if (captchaInput !== generatedCaptcha) {
+                    alert('Неверный регистрационный код (капча)!');
+                    createCaptcha();
+                    return;
+                }
+                // Проверка ответа на случайный вопрос антиспама
+                if (antiSpamInput !== currentAntiSpamAnswer) {
+                    alert('Неверный ответ на вопрос антиспама! Попробуйте еще раз.');
+                    initAntiSpam();
+                    return;
+                }
+
+                try {
+                    // Регистрация в Firebase Auth
+                    const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+                    const user = userCredential.user;
+
+                    // Обновляем имя в профиле
+                    await updateProfile(user, { displayName: username });
+
+                    // Отправляем письмо с подтверждением
+                    await sendEmailVerification(user);
+
+                    // Сохраняем дополнительные данные (дату рождения, часовой пояс, пол) в Firestore
+                    await setDoc(doc(db, "users_meta", user.uid), {
+                        username: username,
+                        email: email,
+                        birthDate: `${birthDay}.${birthMonth}.${birthYear}`,
+                        gender: gender,
+                        timezone: timezone,
+                        createdAt: Date.now(),
+                        lastUsernameChange: 0
+                    });
+
+                    alert('Регистрация успешно завершена! На ваш Email отправлено письмо с подтверждением. Пожалуйста, подтвердите почту перед входом.');
+                    window.location.href = 'index.html';
+
+                } catch (error) {
+                    console.error("Ошибка регистрации:", error);
+                    alert("Ошибка: " + error.message);
+                }
+            };
+        });
+    </script>
+</head>
+<body>
+
+    <div class="register-container">
+        <h2>Регистрация</h2>
+
+        <!-- Дата рождения -->
+        <fieldset class="fieldset-box">
+            <legend>Пожалуйста, введите дату Вашего рождения</legend>
+            <div class="form-row">
+                <label>Месяц / День / Год:</label>
+                <div style="display: flex; gap: 5px; width: 55%;">
+                    <select id="birthMonth" style="width: 40%;">
+                        <option value="1">Январь</option><option value="2">Февраль</option><option value="3">Март</option>
+                        <option value="4">Апрель</option><option value="5">Май</option><option value="6">Июнь</option>
+                        <option value="7">Июль</option><option value="8">Август</option><option value="9">Сентябрь</option>
+                        <option value="10">Октябрь</option><option value="11">Ноябрь</option><option value="12">Декабрь</option>
+                    </select>
+                    <select id="birthDay" style="width: 25%;">
+                        <script>
+                            for(let i=1; i<=31; i++) document.write(`<option value="${i}">${i}</option>`);
+                        </script>
+                    </select>
+                    <input type="text" id="birthYear" placeholder="ГГГГ" maxlength="4" style="width: 30%;">
+                </div>
+            </div>
+        </fieldset>
+
+        <!-- Основные данные -->
+        <fieldset class="fieldset-box">
+            <legend>Учетная запись</legend>
+            <div class="form-row">
+                <label>Имя пользователя:</label>
+                <input type="text" id="username" placeholder="Ваш никнейм">
+            </div>
+            <div class="form-row">
+                <label>Пароль:</label>
+                <input type="password" id="password" placeholder="Минимум 6 символов">
+            </div>
+            <div class="form-row">
+                <label>Подтвердите пароль:</label>
+                <input type="password" id="confirmPassword" placeholder="Повторите пароль">
+            </div>
+            <div class="form-row">
+                <label>Адрес Email:</label>
+                <input type="email" id="email" placeholder="example@mail.com">
+            </div>
+            <div class="form-row">
+                <label>Подтвердите Email:</label>
+                <input type="email" id="confirmEmail" placeholder="Повторите email">
+            </div>
+        </fieldset>
+
+        <!-- Капча и Антиспам -->
+        <fieldset class="fieldset-box">
+            <legend>Защита от роботов</legend>
+            <div class="form-row">
+                <label>Регистрационный код:</label>
+                <div style="display: flex; align-items: center; gap: 10px; width: 55%;">
+                    <input type="text" id="captchaInput" placeholder="Введите код" style="width: 100px;">
+                    <div id="captchaText" class="captcha-box">ABC123</div>
+                </div>
+            </div>
+            <div style="text-align: right; font-size: 11px; margin-bottom: 8px;">
+                <a href="#" id="reloadCaptcha" style="color: #2b587a; text-decoration: none;">Перегрузить изображение</a>
+            </div>
+            <div class="form-row">
+                <label id="antiSpamQuestionLabel">Вопрос антиспама:</label>
+                <input type="text" id="antiSpam" placeholder="Ваш ответ">
+            </div>
+        </fieldset>
+
+        <!-- Профиль и Часовой пояс -->
+        <fieldset class="fieldset-box">
+            <legend>Дополнительно (профиль и время)</legend>
+            <div class="form-row">
+                <label>Пол:</label>
+                <select id="gender">
+                    <option value="Не указан">Не указывать</option>
+                    <option value="Мужской">Мужской</option>
+                    <option value="Женский">Женский</option>
+                </select>
+            </div>
+            <div class="form-row" style="margin-top: 10px;">
+                <label>Часовой пояс:</label>
+                <select id="timezone">
+                    <option value="GMT-9">(GMT -9:00) Аляска, Анкоридж </option>
+                    <option value="GMT-8">(GMT -8:00) Лос-Анджелес </option>
+                    <option value="GMT-5">(GMT -5:00) Североамериканское восточное время, Нью-Йорк, Торонто </option>
+                    <option value="GMT+0" selected>(GMT +0:00) Лондон, Дублин, Лиссабон, Рейкьявик </option>
+                    <option value="GMT+1">(GMT +1:00) Центральная Европа: Берлин, Париж, Рим, Мадрид, Варшава </option>
+                    <option value="GMT+2">(GMT +2:00) Восточная Европа: Киев, Каир, Иерусалим, Бухарест, Хельсинки </option>
+                    <option value="GMT+3">(GMT +3:00) Минск, Стамбул </option>
+                    <option value="GMT+4">(GMT +4:00) Тбилиси, Ереван </option>
+                    <option value="GMT+12">(GMT +12:00) Окленд </option>
+                </select>
+            </div>
+        </fieldset>
+
+        <div class="btn-container">
+            <button id="registerBtn">Продолжить</button>
+            <br><br>
+            <a href="index.html" style="font-size: 13px; color: #5281b8; text-decoration: none;">← Вернуться на главную</a>
+        </div>
+    </div>
+
+</body>
+</html>

@@ -172,7 +172,7 @@
         const db = getFirestore(app);
 
         let currentUser = null;
-        let base64Avatar = '';
+        let avatarData = '';
 
         onAuthStateChanged(auth, async (user) => {
             if (!user) {
@@ -181,30 +181,59 @@
             } else {
                 currentUser = user;
                 document.getElementById('usernameInput').value = user.displayName || '';
-                if (user.photoURL) {
-                    document.getElementById('avatarImg').src = user.photoURL;
-                    base64Avatar = user.photoURL;
+                
+                // Загружаем данные профиля из Firestore (включая аватарку)
+                const userDocRef = doc(db, "users_meta", user.uid);
+                const docSnap = await getDoc(userDocRef);
+                
+                if (docSnap.exists() && docSnap.data().avatar) {
+                    avatarData = docSnap.data().avatar;
+                    document.getElementById('avatarImg').src = avatarData;
+                } else if (user.photoURL) {
+                    avatarData = user.photoURL;
+                    document.getElementById('avatarImg').src = avatarData;
                 }
 
-                // Проверяем дату последней смены имени в Firestore
                 await checkNameChangeLimit(user.uid);
             }
         });
 
-        // Конвертация загруженной картинки в Base64 для сохранения в профиле
+        // Сжатие и конвертация выбранной картинки в легкий формат
         window.handleFileSelect = function(event) {
             const file = event.target.files[0];
             if (!file) return;
 
-            if (file.size > 1024 * 1024) { // Ограничение ~1MB для базы
-                alert("Файл слишком большой! Выберите картинку размером до 1 МБ.");
-                return;
-            }
-
             const reader = new FileReader();
             reader.onload = function(e) {
-                base64Avatar = e.target.result;
-                document.getElementById('avatarImg').src = base64Avatar;
+                const img = new Image();
+                img.src = e.target.result;
+                img.onload = function() {
+                    const canvas = document.createElement('canvas');
+                    const MAX_WIDTH = 150;
+                    const MAX_HEIGHT = 150;
+                    let width = img.width;
+                    let height = img.height;
+
+                    if (width > height) {
+                        if (width > MAX_WIDTH) {
+                            height *= MAX_WIDTH / width;
+                            width = MAX_WIDTH;
+                        }
+                    } else {
+                        if (height > MAX_HEIGHT) {
+                            width *= MAX_HEIGHT / height;
+                            height = MAX_HEIGHT;
+                        }
+                    }
+
+                    canvas.width = width;
+                    canvas.height = height;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, width, height);
+
+                    avatarData = canvas.toDataURL('image/jpeg', 0.7);
+                    document.getElementById('avatarImg').src = avatarData;
+                };
             };
             reader.readAsDataURL(file);
         };
@@ -217,7 +246,7 @@
                 if (docSnap.exists()) {
                     const data = docSnap.data();
                     const lastChangeTime = data.lastUsernameChange || 0;
-                    const twoWeeksMs = 14 * 24 * 60 * 60 * 1000; // 14 дней в миллисекундах
+                    const twoWeeksMs = 14 * 24 * 60 * 60 * 1000;
                     const timeLeft = twoWeeksMs - (Date.now() - lastChangeTime);
 
                     if (timeLeft > 0) {
@@ -246,24 +275,27 @@
                 const userDocRef = doc(db, "users_meta", currentUser.uid);
                 const docSnap = await getDoc(userDocRef);
                 let canChangeName = true;
+                let lastChangeTime = Date.now();
 
                 if (docSnap.exists()) {
-                    const lastChangeTime = docSnap.data().lastUsernameChange || 0;
+                    lastChangeTime = docSnap.data().lastUsernameChange || 0;
                     const twoWeeksMs = 14 * 24 * 60 * 60 * 1000;
                     if (Date.now() - lastChangeTime < twoWeeksMs) {
                         canChangeName = false;
                     }
                 }
 
-                // Обновляем профиль в Firebase Auth
-                const updateData = { photoURL: base64Avatar };
+                // Обновляем имя в Firebase Auth (если прошло 2 недели)
                 if (canChangeName && newName !== currentUser.displayName) {
-                    updateData.displayName = newName;
-                    // Сохраняем новое время смены имени в Firestore
-                    await setDoc(userDocRef, { lastUsernameChange: Date.now() }, { merge: true });
+                    await updateProfile(currentUser, { displayName: newName });
+                    lastChangeTime = Date.now();
                 }
 
-                await updateProfile(currentUser, updateData);
+                // Сохраняем аватарку и дату смены имени в Firestore (где нет ограничений на размер)
+                await setDoc(userDocRef, { 
+                    avatar: avatarData,
+                    lastUsernameChange: lastChangeTime 
+                }, { merge: true });
 
                 statusEl.textContent = "✓ Изменения успешно сохранены!";
                 statusEl.style.color = "#27ae60";
@@ -284,7 +316,6 @@
 
     <div class="app-container">
         
-        <!-- ЛЕВАЯ ПАНЕЛЬ -->
         <div class="sidebar-left">
             <h3>Меню</h3>
             <a href="settings.html" class="menu-item">
@@ -301,7 +332,6 @@
             </a>
         </div>
 
-        <!-- ЦЕНТРАЛЬНАЯ ПАНЕЛЬ (Профиль) -->
         <div class="content-main">
             <h2>👤 Управление профилем</h2>
             
@@ -326,7 +356,6 @@
             </div>
         </div>
 
-        <!-- ПРАВАЯ ПАНЕЛЬ -->
         <div class="sidebar-right">
             <h3>Themes</h3>
             <a href="themes.html" class="menu-item" style="border-left: 4px solid #5281b8;">Разделы тем</a>
