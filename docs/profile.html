@@ -76,6 +76,7 @@
             border-radius: 4px;
             padding: 15px;
             box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+            text-align: center;
         }
 
         h2 {
@@ -84,32 +85,50 @@
             margin-top: 0;
             border-bottom: 1px solid #e1e3e6;
             padding-bottom: 8px;
+            text-align: left;
+        }
+
+        .profile-container {
+            max-width: 400px;
+            margin: 0 auto;
+            text-align: left;
+        }
+
+        .avatar-preview {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 2px solid #b9c2c8;
+            margin-bottom: 10px;
+            background: #f0f2f5;
         }
 
         .form-group {
             margin-bottom: 15px;
         }
 
-        label {
+        .form-group label {
             display: block;
-            font-size: 12px;
-            color: #555;
+            font-size: 13px;
+            color: #333;
             margin-bottom: 5px;
             font-weight: bold;
         }
 
-        input[type="text"] {
+        .form-group input {
             width: 100%;
             padding: 8px 10px;
             font-size: 13px;
             border: 1px solid #b9c2c8;
             border-radius: 3px;
-            outline: none;
             box-sizing: border-box;
+            outline: none;
         }
 
-        input:focus {
-            border-color: #5181b8;
+        .form-group input:disabled {
+            background: #e9ecef;
+            color: #6c757d;
         }
 
         button {
@@ -127,21 +146,17 @@
             background: linear-gradient(to bottom, #5d8ec6 0%, #4c7aa9 100%);
         }
 
-        .avatar-preview {
-            width: 80px;
-            height: 80px;
-            border-radius: 50%;
-            object-fit: cover;
-            border: 1px solid #c5cdd7;
-            margin-bottom: 10px;
-            background: #f7f8fa;
+        .status-msg {
+            margin-top: 10px;
+            font-size: 13px;
+            font-weight: bold;
         }
     </style>
 
-    <!-- Подключаем Firebase SDK для управления профилем -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getAuth, updateProfile, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+        import { getAuth, onAuthStateChanged, updateProfile } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+        import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyAtjgLbbXe-1fmL5hu409vNgBampz97ndo",
@@ -154,42 +169,114 @@
 
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
+        const db = getFirestore(app);
 
-        const displayNameInput = document.getElementById('displayNameInput');
-        const photoUrlInput = document.getElementById('photoUrlInput');
-        const avatarPreview = document.getElementById('avatarPreview');
-        const saveBtn = document.getElementById('saveBtn');
+        let currentUser = null;
+        let base64Avatar = '';
 
-        onAuthStateChanged(auth, (user) => {
-            if (user) {
-                displayNameInput.value = user.displayName || '';
-                photoUrlInput.value = user.photoURL || '';
-                if (user.photoURL) {
-                    avatarPreview.src = user.photoURL;
-                }
-            } else {
-                alert('Пожалуйста, войдите в систему на главной странице!');
+        onAuthStateChanged(auth, async (user) => {
+            if (!user) {
+                alert('Пожалуйста, войдите в систему!');
                 window.location.href = 'index.html';
+            } else {
+                currentUser = user;
+                document.getElementById('usernameInput').value = user.displayName || '';
+                if (user.photoURL) {
+                    document.getElementById('avatarImg').src = user.photoURL;
+                    base64Avatar = user.photoURL;
+                }
+
+                // Проверяем дату последней смены имени в Firestore
+                await checkNameChangeLimit(user.uid);
             }
         });
 
-        saveBtn.onclick = () => {
-            const user = auth.currentUser;
-            if (!user) return;
+        // Конвертация загруженной картинки в Base64 для сохранения в профиле
+        window.handleFileSelect = function(event) {
+            const file = event.target.files[0];
+            if (!file) return;
 
-            const newName = displayNameInput.value.trim();
-            const newPhotoUrl = photoUrlInput.value.trim();
+            if (file.size > 1024 * 1024) { // Ограничение ~1MB для базы
+                alert("Файл слишком большой! Выберите картинку размером до 1 МБ.");
+                return;
+            }
 
-            updateProfile(user, {
-                displayName: newName,
-                photoURL: newPhotoUrl
-            }).then(() => {
-                alert('Профиль успешно обновлен!');
-                if (newPhotoUrl) avatarPreview.src = newPhotoUrl;
-            }).catch((error) => {
-                console.error('Ошибка обновления профиля:', error);
-                alert('Ошибка: ' + error.message);
-            });
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                base64Avatar = e.target.result;
+                document.getElementById('avatarImg').src = base64Avatar;
+            };
+            reader.readAsDataURL(file);
+        };
+
+        async function checkNameChangeLimit(uid) {
+            try {
+                const userDocRef = doc(db, "users_meta", uid);
+                const docSnap = await getDoc(userDocRef);
+                
+                if (docSnap.exists()) {
+                    const data = docSnap.data();
+                    const lastChangeTime = data.lastUsernameChange || 0;
+                    const twoWeeksMs = 14 * 24 * 60 * 60 * 1000; // 14 дней в миллисекундах
+                    const timeLeft = twoWeeksMs - (Date.now() - lastChangeTime);
+
+                    if (timeLeft > 0) {
+                        const daysLeft = Math.ceil(timeLeft / (1000 * 60 * 60 * 24));
+                        const input = document.getElementById('usernameInput');
+                        input.disabled = true;
+                        document.getElementById('limitMsg').textContent = `Имя можно будет изменить через ${daysLeft} дн. (ограничение раз в 2 недели)`;
+                        document.getElementById('limitMsg').style.color = '#e74c3c';
+                    }
+                }
+            } catch (e) {
+                console.error("Ошибка проверки лимита имени:", e);
+            }
+        }
+
+        window.saveProfile = async function() {
+            const newName = document.getElementById('usernameInput').value.trim();
+            const statusEl = document.getElementById('statusMsg');
+
+            if (!newName) {
+                alert("Имя не может быть пустым!");
+                return;
+            }
+
+            try {
+                const userDocRef = doc(db, "users_meta", currentUser.uid);
+                const docSnap = await getDoc(userDocRef);
+                let canChangeName = true;
+
+                if (docSnap.exists()) {
+                    const lastChangeTime = docSnap.data().lastUsernameChange || 0;
+                    const twoWeeksMs = 14 * 24 * 60 * 60 * 1000;
+                    if (Date.now() - lastChangeTime < twoWeeksMs) {
+                        canChangeName = false;
+                    }
+                }
+
+                // Обновляем профиль в Firebase Auth
+                const updateData = { photoURL: base64Avatar };
+                if (canChangeName && newName !== currentUser.displayName) {
+                    updateData.displayName = newName;
+                    // Сохраняем новое время смены имени в Firestore
+                    await setDoc(userDocRef, { lastUsernameChange: Date.now() }, { merge: true });
+                }
+
+                await updateProfile(currentUser, updateData);
+
+                statusEl.textContent = "✓ Изменения успешно сохранены!";
+                statusEl.style.color = "#27ae60";
+
+                setTimeout(() => {
+                    window.location.reload();
+                }, 1500);
+
+            } catch (e) {
+                console.error("Ошибка сохранения профиля:", e);
+                statusEl.textContent = "Ошибка: " + e.message;
+                statusEl.style.color = "#e74c3c";
+            }
         };
     </script>
 </head>
@@ -197,7 +284,7 @@
 
     <div class="app-container">
         
-        <!-- ЛЕВАЯ ПАНЕЛЬ (Меню) -->
+        <!-- ЛЕВАЯ ПАНЕЛЬ -->
         <div class="sidebar-left">
             <h3>Меню</h3>
             <a href="settings.html" class="menu-item">
@@ -218,21 +305,25 @@
         <div class="content-main">
             <h2>👤 Управление профилем</h2>
             
-            <div style="text-align: center; margin-bottom: 20px;">
-                <img id="avatarPreview" class="avatar-preview" src="https://img.icons8.com/color/48/user-male-circle.png" alt="Avatar">
-            </div>
+            <div class="profile-container">
+                <div style="text-align: center;">
+                    <img id="avatarImg" class="avatar-preview" src="https://img.icons8.com/color/96/user-male-circle.png" alt="Аватар">
+                </div>
 
-            <div class="form-group">
-                <label for="displayNameInput">Имя пользователя:</label>
-                <input type="text" id="displayNameInput" placeholder="Введите ваше имя">
-            </div>
+                <div class="form-group">
+                    <label>Загрузить фото с устройства:</label>
+                    <input type="file" id="avatarFileInput" accept="image/*" onchange="handleFileSelect(event)">
+                </div>
 
-            <div class="form-group">
-                <label for="photoUrlInput">Ссылка на аватарку (URL изображения):</label>
-                <input type="text" id="photoUrlInput" placeholder="https://example.com/avatar.jpg">
-            </div>
+                <div class="form-group">
+                    <label>Имя пользователя:</label>
+                    <input type="text" id="usernameInput" placeholder="Ваше имя">
+                    <div id="limitMsg" style="font-size: 11px; margin-top: 4px; color: #7f8c8d;"></div>
+                </div>
 
-            <button id="saveBtn">Сохранить изменения</button>
+                <button onclick="saveProfile()">Сохранить изменения</button>
+                <div id="statusMsg" class="status-msg"></div>
+            </div>
         </div>
 
         <!-- ПРАВАЯ ПАНЕЛЬ -->

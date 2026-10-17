@@ -329,9 +329,10 @@
             <div class="header-bar">
                 <h2>💬 Global_Chat-Edition</h2>
                 <div class="auth-box">
-                    <span id="userInfo" style="margin-right: 10px;">Проверка авторизации...</span>
-                    <button id="loginBtn">Войти через Google</button>
-                    <button id="siteRegBtn" style="background: linear-gradient(to bottom, #27ae60 0%, #219653 100%); border-color: #1e8449;">Зарегистрироваться через сайт</button>
+                    <span id="userInfo" style="margin-right: 10px;">Загрузка...</span>
+                    <!-- Изначально кнопки скрыты (style="display: none;"), чтобы ничего не прыгало при загрузке -->
+                    <button id="loginBtn" style="display: none;">Войти через Google</button>
+                    <button id="siteRegBtn" style="display: none; background: linear-gradient(to bottom, #27ae60 0%, #219653 100%); border-color: #1e8449;">Зарегистрироваться через сайт</button>
                     <button id="logoutBtn" style="display: none;">Выйти</button>
                 </div>
             </div>
