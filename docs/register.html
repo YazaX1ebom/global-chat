@@ -121,15 +121,14 @@
 
         // Большой список вопросов и ответов для антиспама (ответы храним в нижнем регистре)
         const antiSpamQuestions = [
-            { question: 'Напишите слово "Йоу"', answer: 'йоу' },
+            { question: 'Напишите слово "Мажор"', answer: 'Мажор' },
             { question: 'Сколько будет 2 + 3?', answer: '5' },
             { question: 'Какого цвета небо? (напишите цвет)', answer: 'синий' },
-            { question: 'Напишите слово "Чат"', answer: 'чат' },
-            { question: 'Какое сейчас время года? (зима/весна/лето/осень)', answer: 'осень' },
+            { question: 'Напишите слово "Чат"', answer: 'Чат' },
             { question: 'Сколько дней в неделе?', answer: '7' },
             { question: 'Напишите цифру 9 словами', answer: 'девять' },
             { question: 'Как называется планета, на которой мы живем?', answer: 'земля' },
-            { question: 'Напишите слово "Форум"', answer: 'форум' },
+            { question: 'Напишите слово "Форум"', answer: 'Форум' },
             { question: 'Сколько пальцев на одной руке?', answer: '5' }
         ];
 
@@ -210,7 +209,7 @@
                     return;
                 }
 
-                try {
+try {
                     // Регистрация в Firebase Auth
                     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
                     const user = userCredential.user;
@@ -221,13 +220,14 @@
                     // Отправляем письмо с подтверждением
                     await sendEmailVerification(user);
 
-                    // Сохраняем дополнительные данные (дату рождения, часовой пояс, пол) в Firestore
+                    // СЮДА НУЖНО ВПИСАТЬ (Сохраняем дополнительные данные в Firestore):
                     await setDoc(doc(db, "users_meta", user.uid), {
                         username: username,
                         email: email,
                         birthDate: `${birthDay}.${birthMonth}.${birthYear}`,
                         gender: gender,
                         timezone: timezone,
+                        role: "Участник", // Роль по умолчанию
                         createdAt: Date.now(),
                         lastUsernameChange: 0
                     });

@@ -166,7 +166,8 @@
     <!-- Подключаем Firebase SDK -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getAuth, GoogleAuthProvider, signInWithPopup, createUserWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+        import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+        import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyAtjgLbbXe-1fmL5hu409vNgBampz97ndo",
@@ -179,6 +180,7 @@
 
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
+        const db = getFirestore(app);
         const provider = new GoogleAuthProvider();
 
         let currentUser = null;
@@ -189,9 +191,6 @@
         const userInfo = document.getElementById('userInfo');
         const messageInput = document.getElementById('messageInput');
         const sendBtn = document.getElementById('sendBtn');
-        const regModal = document.getElementById('regModal');
-        const submitRegBtn = document.getElementById('submitRegBtn');
-        const cancelRegBtn = document.getElementById('cancelRegBtn');
 
         // Вход через Google
         loginBtn.onclick = () => {
@@ -202,33 +201,8 @@
                 });
         };
 
-        // Открытие формы регистрации по кнопке
         siteRegBtn.onclick = () => {
-            regModal.style.display = 'block';
-        };
-
-        cancelRegBtn.onclick = () => {
-            regModal.style.display = 'none';
-        };
-
-        // Регистрация на сайте через email и пароль
-        submitRegBtn.onclick = () => {
-            const email = document.getElementById('regEmail').value.trim();
-            const password = document.getElementById('regPassword').value.trim();
-            if (!email || !password) {
-                alert('Заполните все поля!');
-                return;
-            }
-
-            createUserWithEmailAndPassword(auth, email, password)
-                .then(() => {
-                    alert('Регистрация успешна!');
-                    regModal.style.display = 'none';
-                })
-                .catch((error) => {
-                    console.error("Ошибка регистрации:", error);
-                    alert("Ошибка: " + error.message);
-                });
+            window.location.href = 'register.html';
         };
 
         logoutBtn.onclick = () => {
@@ -242,7 +216,6 @@
                 loginBtn.style.display = 'none';
                 siteRegBtn.style.display = 'none';
                 logoutBtn.style.display = 'inline-block';
-                regModal.style.display = 'none';
                 
                 messageInput.disabled = false;
                 sendBtn.disabled = false;
@@ -279,7 +252,7 @@
             }
         };
 
-        window.sendMessage = function() {
+        window.sendMessage = async function() {
             if (!currentUser) {
                 alert('Необходимо войти в систему!');
                 return;
@@ -289,7 +262,21 @@
             if (!text) return;
 
             const name = currentUser.displayName || currentUser.email.split('@')[0];
-            const fullMessage = `${name}: ${text}`;
+
+            // Получаем роль пользователя из Firestore
+            let role = "Участник";
+            try {
+                const userDocRef = doc(db, "users_meta", currentUser.uid);
+                const docSnap = await getDoc(userDocRef);
+                if (docSnap.exists() && docSnap.data().role) {
+                    role = docSnap.data().role;
+                }
+            } catch (e) {
+                console.error("Ошибка получения роли:", e);
+            }
+
+            // Формируем сообщение с указанием роли
+            const fullMessage = `[${role}] ${name}: ${text}`;
             
             if (ws && ws.readyState === WebSocket.OPEN) {
                 ws.send(fullMessage);
@@ -335,19 +322,6 @@
                     <button id="siteRegBtn" style="display: none; background: linear-gradient(to bottom, #27ae60 0%, #219653 100%); border-color: #1e8449;">Зарегистрироваться через сайт</button>
                     <button id="logoutBtn" style="display: none;">Выйти</button>
                 </div>
-            </div>
-
-            <!-- Всплывающая или скрытая форма для регистрации через сайт -->
-            <div id="regModal" style="display: none; background: #f7f8fa; border: 1px solid #c5cdd7; padding: 12px; margin-bottom: 15px; border-radius: 4px;">
-                <h3 style="margin-top: 0; font-size: 14px; color: #2b587a;">Регистрация на сайте</h3>
-                <div style="margin-bottom: 8px;">
-                    <input type="email" id="regEmail" placeholder="Введите ваш Email" style="width: 250px;" />
-                </div>
-                <div style="margin-bottom: 8px;">
-                    <input type="password" id="regPassword" placeholder="Придумайте пароль" style="width: 250px;" />
-                </div>
-                <button id="submitRegBtn">Зарегистрироваться</button>
-                <button id="cancelRegBtn" style="background: linear-gradient(to bottom, #95a5a6 0%, #7f8c8d 100%); border-color: #717d7e;">Отмена</button>
             </div>
 
             <div id="chat"></div>

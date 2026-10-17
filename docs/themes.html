@@ -208,6 +208,7 @@
             addDoc, 
             deleteDoc, 
             doc, 
+            getDoc,
             onSnapshot, 
             updateDoc, 
             arrayUnion, 
@@ -331,11 +332,23 @@
             document.getElementById('themesListSection').style.display = 'block';
         };
 
-        // Отправка сообщения в тему (сохраняется в Firestore)
+        // Отправка сообщения в тему с учетом роли пользователя
         window.sendThemeMessage = async function() {
             const input = document.getElementById('themeMsgInput');
             const text = input.value.trim();
             if (!text || !activeThemeId) return;
+
+            // Получаем роль текущего пользователя из Firestore
+            let userRole = "Участник";
+            try {
+                const userDocRef = doc(db, "users_meta", currentUser.uid);
+                const docSnap = await getDoc(userDocRef);
+                if (docSnap.exists() && docSnap.data().role) {
+                    userRole = docSnap.data().role;
+                }
+            } catch (e) {
+                console.error("Ошибка получения роли:", e);
+            }
 
             const now = new Date();
             const dateStr = now.toLocaleDateString();
@@ -349,6 +362,7 @@
 
             const newMsg = {
                 author: currentUser.displayName || 'Аноним',
+                senderRole: userRole,
                 text: text,
                 date: dateStr,
                 time: timeStr,
@@ -377,7 +391,10 @@
                 div.innerHTML = `
                     <div class="msg-date-top">📅 ${m.date || ''}</div>
                     <div class="msg-content-row">
-                        <div><b>${m.author}:</b> ${m.text}</div>
+                        <div>
+                            <span style="color: #e67e22; font-weight: bold; font-size: 11px;">[${m.senderRole || 'Участник'}]</span>
+                            <b>${m.author}:</b> ${m.text}
+                        </div>
                         <div class="msg-time">${m.time || ''}</div>
                     </div>
                 `;
